@@ -1,3 +1,4 @@
+import { APPEARANCE_LABEL, CLAIM_POLICY } from "@/lib/claim-policy";
 import type { ConditionsResult } from "@/lib/conditions";
 import { badgeText, fmtSigned, METRIC_LABEL, type Evaluation, type Verdict } from "@/lib/noise";
 import { NoiseRuler } from "./NoiseRuler";
@@ -11,8 +12,13 @@ const VERDICT_LABEL: Record<Verdict, string> = {
   claimable: "Claimable",
   "within-noise": "Within noise",
   "no-visible-change": "No visible change",
-  "blocked-conditions": "Conditions differ",
+  "blocked-conditions": "Blocked: light differs",
+  "blocked-claim-type": "Blocked: claim type",
 };
+
+export function verdictLabel(v: Verdict) {
+  return VERDICT_LABEL[v];
+}
 
 export function Mark({ ok }: { ok: boolean }) {
   return (
@@ -59,84 +65,91 @@ export function ResultPanel({
   after,
   conditions,
   evaluation,
-  demo,
 }: {
   before: PanelSide;
   after: PanelSide;
   conditions: ConditionsResult;
   evaluation: Evaluation;
-  demo: boolean;
 }) {
   const shown = evaluation.metrics.filter((m) => Math.round(m.deltaUiPct) !== 0);
   const allowed = evaluation.metrics.filter((m) => m.verdict === "claimable");
-  const held = shown.filter((m) => m.verdict !== "claimable");
-  const blockedBy = evaluation.identical ? "same-file" : !conditions.match ? "conditions" : "noise";
+  const notAllowed = shown.filter((m) => m.verdict !== "claimable");
+  const anyBlocked = evaluation.metrics.some((m) => m.verdict.startsWith("blocked"));
+  const tone = allowed.length ? "is-ok" : anyBlocked ? "is-blocked" : "is-neutral";
+  const product = evaluation.product;
 
   return (
     <div className="panel">
-      {demo && <p className="demo-tag">Demo data: developer&apos;s own photos</p>}
-      <div className="photos">
-        {[
-          ["Before", before],
-          ["After", after],
-        ].map(([label, s]) => {
-          const side = s as PanelSide;
-          return (
-            <figure key={label as string} className="photo">
+      <div className="panel__top">
+        <div className="photos">
+          {(
+            [
+              ["Before", before],
+              ["After", after],
+            ] as const
+          ).map(([label, side]) => (
+            <figure key={label} className="photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={side.image} alt={`${label} photo: ${side.caption}`} width={540} height={720} loading="lazy" />
               <figcaption>
-                <strong>{label as string}</strong> {side.caption}
+                <strong>{label}</strong> {side.caption}
               </figcaption>
             </figure>
-          );
-        })}
-      </div>
-
-      <div className="decision">
-        <div className="decision__app">
-          <p className="eyebrow">The app would show</p>
-          <div className="badges">
-            {shown.length === 0 && <span className="badge badge--none">No change</span>}
-            {shown.map((m) => (
-              <span key={m.metric} className="badge">
-                {badgeText(m.metric, m.deltaUiPct)}
-              </span>
-            ))}
-          </div>
+          ))}
         </div>
-        <div className={`decision__verdict ${allowed.length ? "is-ok" : "is-blocked"}`}>
-          <p className="eyebrow">Claim Guard</p>
-          {allowed.length ? (
-            <>
-              <p className="verdict-line">
-                Badge allowed for {allowed.map((m) => METRIC_LABEL[m.metric].toLowerCase()).join(" and ")}
+
+        <div className="decision">
+          <div className="decision__app">
+            <p className="eyebrow">The app would show</p>
+            <div className="badges">
+              {shown.length === 0 && <span className="badge badge--none">No change</span>}
+              {shown.map((m) => (
+                <span key={m.metric} className="badge">
+                  {badgeText(m.metric, m.deltaUiPct)}
+                </span>
+              ))}
+            </div>
+            {product && (
+              <p className="decision__product">
+                Product: <strong>{CLAIM_POLICY[product].label}</strong>
+                {CLAIM_POLICY[product].makeup ? " (makeup)" : ""}
               </p>
-              <div className="badges badges--verdict">
-                {allowed.map((m) => (
-                  <span key={m.metric} className="badge badge--ok">
-                    {badgeText(m.metric, m.deltaUiPct)}
-                  </span>
-                ))}
-                {held.map((m) => (
-                  <span key={m.metric} className="badge badge--held" title={m.reason}>
-                    {badgeText(m.metric, m.deltaUiPct)} held back
-                  </span>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="verdict-line">
-              Badge blocked
-              <span>
-                {blockedBy === "same-file"
-                  ? "The two photos are the same file."
-                  : blockedBy === "conditions"
-                    ? "The photos were taken under different light."
-                    : "Every change is inside the noise floor."}
-              </span>
-            </p>
-          )}
+            )}
+          </div>
+          <div className={`decision__verdict ${tone}`}>
+            <p className="eyebrow">Claim Guard</p>
+            {allowed.length ? (
+              <>
+                <p className="verdict-line">Badge allowed for {allowed.map((m) => METRIC_LABEL[m.metric].toLowerCase()).join(" and ")}</p>
+                <div className="badges badges--verdict">
+                  {allowed.map((m) => (
+                    <span key={m.metric} className="badge badge--ok">
+                      {badgeText(m.metric, m.deltaUiPct)}
+                      {m.claimKind === "appearance" && <small>{APPEARANCE_LABEL}</small>}
+                    </span>
+                  ))}
+                  {notAllowed.map((m) => (
+                    <span key={m.metric} className="badge badge--held" title={m.reason}>
+                      {badgeText(m.metric, m.deltaUiPct)}: {VERDICT_LABEL[m.verdict].toLowerCase()}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="verdict-line">
+                {evaluation.identical ? "No change" : anyBlocked ? "Badge blocked" : "No badge"}
+                <span>
+                  {evaluation.identical
+                    ? "The two photos are the same file, so every metric is within noise."
+                    : !conditions.match
+                      ? "The photos were taken under different light."
+                      : anyBlocked
+                        ? "The product can't make these claims."
+                        : "Every change is within the noise of a retake."}
+                </span>
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -161,11 +174,11 @@ export function ResultPanel({
               <NoiseRuler deltaRaw={m.deltaRaw} mdc={m.mdc95} />
               <p className="metric__reason">
                 {m.reason}
-                {m.verdict === "blocked-conditions" && (
+                {(m.verdict === "blocked-conditions" || m.verdict === "blocked-claim-type") && (
                   <>
                     {" "}
                     {m.aboveNoise
-                      ? `A noise check alone would have approved this: raw moved ${fmtSigned(m.deltaRaw)}, past the ±${m.mdc95.toFixed(1)} floor.`
+                      ? `A noise check alone would have allowed this: raw moved ${fmtSigned(m.deltaRaw)}, past the ±${m.mdc95.toFixed(1)} floor.`
                       : `Raw moved ${fmtSigned(m.deltaRaw)}, inside the ±${m.mdc95.toFixed(1)} floor anyway.`}
                   </>
                 )}

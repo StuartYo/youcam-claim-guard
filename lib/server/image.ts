@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { MAX_INPUT_PIXELS } from "../measure";
 
 export const MAX_BYTES = 10 * 1024 * 1024;
 export const MAX_LONG_SIDE = 2560;
@@ -28,7 +29,7 @@ export async function prepareImage(file: File | null, label: string): Promise<Pr
   if (file.type && !TYPES.has(file.type)) throw new InputError(`The ${label} photo must be JPG or PNG.`);
   const original = Buffer.from(await file.arrayBuffer());
   if (!sniff(original)) throw new InputError(`The ${label} file is not a JPG or PNG image.`);
-  let img = sharp(original, { failOn: "error" }).rotate();
+  let img = sharp(original, { failOn: "error", limitInputPixels: MAX_INPUT_PIXELS }).rotate();
   const meta = await img.metadata();
   let w = meta.autoOrient?.width ?? meta.width ?? 0;
   let h = meta.autoOrient?.height ?? meta.height ?? 0;

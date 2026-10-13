@@ -25,8 +25,53 @@ interface AnalyzeResponse {
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
-/** Two demo photos for a free try: ceiling light (before) and desk spot (after). Same face, same day, different light. */
+/** Two demo photos for a free try: ceiling light (before) and desk spot (after). Same face, same day, different room and light. */
 const SAMPLE = { before: "/demo/IMG_1373.jpg", after: "/demo/IMG_1406.jpg" } as const;
+/** The real YouCam responses for those two photos, saved when they were analyzed. Showing them costs no credits. */
+const SAMPLE_CACHED = { before: "/demo/youcam/IMG_1373.json", after: "/demo/youcam/IMG_1406.json" } as const;
+
+interface CachedResponse {
+  cached: { photo: string; fetched: string | null; endpoint: string; note: string };
+  response: { data: { results: { output: Array<{ type: string; ui_score?: number; raw_score?: number; score?: number }> } } };
+}
+
+const SHOW = ["moisture", "pore", "wrinkle", "radiance"];
+
+function CachedBlock({ side, c }: { side: string; c: CachedResponse }) {
+  const rows = c.response.data.results.output.filter((o) => SHOW.includes(o.type));
+  return (
+    <div className="cached">
+      <p className="cached__title">
+        {side}: {c.cached.photo}
+        <span>Cached YouCam response from {c.cached.fetched ?? "an earlier run"}</span>
+      </p>
+      <table className="cached__table">
+        <thead>
+          <tr>
+            <th>type</th>
+            <th>ui_score</th>
+            <th>raw_score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((o) => (
+            <tr key={o.type}>
+              <td>{o.type}</td>
+              <td className="num">{o.ui_score}</td>
+              <td className="num">{o.raw_score?.toFixed(3)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <details className="cached__raw">
+        <summary>Full response JSON</summary>
+        <pre>
+          <code>{JSON.stringify(c.response, null, 1)}</code>
+        </pre>
+      </details>
+    </div>
+  );
+}
 
 const GUIDE = [
   {
@@ -75,12 +120,14 @@ export function LiveMode() {
   const [check, setCheck] = useState<ConditionsResponse | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [sample, setSample] = useState(false);
+  const [cached, setCached] = useState<{ before: CachedResponse; after: CachedResponse } | null>(null);
 
   async function pick(side: Side, file: File | undefined) {
     setError(null);
     setCheck(null);
     setResult(null);
     setSample(false);
+    setCached(null);
     if (!file) return;
     try {
       const blob = await shrink(file);
@@ -128,6 +175,14 @@ export function LiveMode() {
       });
       setBlobs(nextBlobs);
       setSample(true);
+      const [cb, ca] = await Promise.all(
+        (["before", "after"] as const).map(async (side) => {
+          const r = await fetch(SAMPLE_CACHED[side]);
+          if (!r.ok) throw new Error("Could not load the cached YouCam responses.");
+          return (await r.json()) as CachedResponse;
+        }),
+      );
+      setCached({ before: cb, after: ca });
       await runCheck(nextBlobs);
     } catch (e) {
       setError({ text: e instanceof Error ? e.message : "Could not load the sample photos." });
@@ -217,7 +272,7 @@ export function LiveMode() {
           <button type="button" className="btn btn--soft" disabled={busy !== ""} onClick={loadSample}>
             Try with sample photos
           </button>
-          <span>Loads two demo photos (ceiling light, then desk spot) and runs the free check. No credits used.</span>
+          <span>Loads two demo photos (ceiling light, then desk spot), runs the free check and shows their cached YouCam responses. No credits used.</span>
         </div>
       </aside>
       </div>
@@ -237,17 +292,25 @@ export function LiveMode() {
               {check.conditions.match
                 ? "Score changes between these photos can be compared."
                 : sample
-                  ? "Any score change between these two photos would be held back."
+                  ? "Any score change between these two photos would be blocked."
                   : "Any score change here will be blocked. You can still run the analysis to see what the API reports."}
             </span>
           </p>
           <ConditionsList conditions={check.conditions} />
 
           {sample ? (
-            <p className="note">
-              These are demo photos, so skin analysis is not offered here. Their real YouCam results are in the{" "}
-              <a href="#cases">ceiling light to desk spot case</a>.
-            </p>
+            <>
+              {cached && (
+                <div className="cached-grid">
+                  <CachedBlock side="Before" c={cached.before} />
+                  <CachedBlock side="After" c={cached.after} />
+                </div>
+              )}
+              <p className="note">
+                These are the real YouCam skin analysis responses for these two photos, saved when they were analyzed, so no credits are used here.
+                The full verdict is in the <a href="#cases">ceiling light to desk spot case</a>.
+              </p>
+            </>
           ) : (
           <>
           <div className="consent">
@@ -304,7 +367,7 @@ export function LiveMode() {
             after={{ image: files.after.url, caption: files.after.file.name }}
             conditions={result.conditions}
             evaluation={result.evaluation}
-            demo={false}
+
           />
         </div>
       )}

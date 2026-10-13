@@ -22,7 +22,7 @@ import sharp from "sharp";
 import { compareConditions, THRESHOLDS, type CaptureStats } from "../lib/conditions";
 import type { DemoData, DemoPhoto } from "../lib/demo-types";
 import { measure } from "../lib/measure";
-import { pairTally } from "../lib/summary";
+import { pairSentence, pairTally } from "../lib/summary";
 
 const ROOT = path.resolve(__dirname, "..");
 const data: DemoData = JSON.parse(readFileSync(path.join(ROOT, "data", "scores.json"), "utf-8"));
@@ -73,7 +73,7 @@ for (const [a, b] of pairs) {
   }
   tally.set(k, t);
 }
-const expect: Record<string, "pass" | "fail" | "info"> = { "s1-s1": "pass", "s1-s3": "fail", "s1-s2": "fail", "s2-s2": "fail", "s2-s3": "fail", "s3-s3": "info" };
+const expect: Record<string, "pass" | "fail"> = { "s1-s1": "pass", "s1-s3": "fail", "s1-s2": "fail", "s2-s2": "fail", "s2-s3": "fail", "s3-s3": "pass" };
 let ok = true;
 for (const [k, t] of [...tally.entries()].sort()) {
   const want = expect[k];
@@ -82,10 +82,7 @@ for (const [k, t] of [...tally.entries()].sort()) {
   console.log(`  ${k}: ${t.pass} pass, ${t.fail} fail  [expect ${want}] ${good ? "OK" : "BROKEN"}  failing checks: ${[...t.reasons].join(", ") || "none"}`);
 }
 const t = pairTally(P);
-console.log(
-  `\nIn-sample summary: ${t.sameLight.passed}/${t.sameLight.total} same-light pairs pass, ${t.changed.blocked}/${t.changed.total} different-light or backlit pairs blocked, ` +
-    `${t.ceilingOnly.passed}/${t.ceilingOnly.total} ceiling-only pairs pass (not used for calibration).`,
-);
+console.log(`\nIn-sample summary: ${pairSentence(t)}`);
 console.log("These are in-sample: the limits were set on these same photos. They are not an accuracy figure.");
 
 async function heldOut(dir: string) {

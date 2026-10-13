@@ -104,20 +104,47 @@ describe("evaluate", () => {
     expect(evaluate({ before, after, conditions: match, noise }).metrics[0].verdict).toBe("claimable");
   });
 
-  it("positive control: resized original vs the same file with virtual foundation", () => {
+  it("positive control without a product category: moisture and radiance pass the numbers", () => {
     const sim = data.simulated!.find((x) => x.id === "IMG_1407_foundation1")!;
     const b = data.baselines!.find((x) => x.id === sim.baselineId)!;
     expect(b.sourceId).toBe(sim.sourceId);
     const conditions = compareConditions(b.capture, sim.capture);
     expect(conditions.match).toBe(true);
     const ev = evaluate({ before: b.scores, after: sim.scores, conditions, noise });
-    expect(ev.badgeAllowed).toBe(true);
     const v = (m: Metric) => ev.metrics.find((x) => x.metric === m)!;
     expect(v("moisture").verdict).toBe("claimable");
     expect(v("radiance").verdict).toBe("claimable");
-    // With the resize matched on both sides, pore moves -2.8 against a floor of 2.9.
     expect(v("pore").verdict).toBe("within-noise");
     expect(v("wrinkle").verdict).toBe("no-visible-change");
+  });
+
+  it("positive control as foundation: radiance is an appearance claim, moisture and wrinkle are blocked by claim type", () => {
+    const sim = data.simulated!.find((x) => x.id === "IMG_1407_foundation1")!;
+    const b = data.baselines!.find((x) => x.id === sim.baselineId)!;
+    const conditions = compareConditions(b.capture, sim.capture);
+    const ev = evaluate({ before: b.scores, after: sim.scores, conditions, noise, product: "foundation" });
+    const v = (m: Metric) => ev.metrics.find((x) => x.metric === m)!;
+    expect(ev.product).toBe("foundation");
+    expect(ev.badgeAllowed).toBe(true);
+    expect(v("radiance").verdict).toBe("claimable");
+    expect(v("radiance").claimKind).toBe("appearance");
+    expect(v("moisture").verdict).toBe("blocked-claim-type");
+    expect(v("moisture").reason).toBe("Foundation is makeup. A moisture claim needs a product such as a moisturizer or serum.");
+    expect(v("moisture").aboveNoise).toBe(true);
+    expect(v("wrinkle").verdict).toBe("blocked-claim-type");
+    expect(v("pore").verdict).toBe("within-noise");
+  });
+
+  it("a moisturizer may claim moisture; sunscreen may claim nothing", () => {
+    const before = { moisture: { ui: 75, raw: 65 } };
+    const after = { moisture: { ui: 80, raw: 75 } };
+    expect(evaluate({ before, after, conditions: match, noise, product: "moisturizer" }).metrics[0]).toMatchObject({ verdict: "claimable", claimKind: "skin" });
+    expect(evaluate({ before, after, conditions: match, noise, product: "sunscreen" }).metrics[0].verdict).toBe("blocked-claim-type");
+  });
+
+  it("same file wins over claim type", () => {
+    const s = { moisture: { ui: 75, raw: 65 } };
+    expect(evaluate({ before: s, after: s, conditions: match, noise, identical: true, product: "foundation" }).metrics[0].verdict).toBe("within-noise");
   });
 
   it("resizing alone (2560 px vs 1920 px of IMG_1407) stays inside the noise floor", () => {

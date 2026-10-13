@@ -1,4 +1,3 @@
-import { useId } from "react";
 import { fmtSigned } from "@/lib/noise";
 
 const H = 84;
@@ -19,15 +18,14 @@ function niceStep(d: number) {
 const textWidth = (s: string, size: number) => s.length * size * 0.6;
 
 /**
- * Number line for one metric's raw-score change. The hatched band is the noise floor (±MDC95);
- * the arrow runs from 0 to the measured change and its value sits at the arrow end.
- * Inside the band the arrow is grey, outside it takes the accent colour.
+ * Number line for one metric's raw-score change. The flat light band is the noise floor (±MDC95);
+ * a solid arrow runs from 0 to the measured change and its value sits at the arrow end.
+ * Inside the band the arrow is dark neutral, outside it takes the accent colour.
  */
 export function NoiseRuler({ deltaRaw, mdc, label = "raw", width = 420 }: { deltaRaw: number; mdc: number; label?: string; width?: number }) {
   const W = width;
   const MID = W / 2;
   const HALF = W / 2 - PAD - 6;
-  const id = useId().replace(/:/g, "");
   const outside = Math.abs(deltaRaw) > mdc;
   const reach = Math.max(Math.abs(deltaRaw) * 1.15, mdc * 1.8, 2);
   const step = niceStep(reach);
@@ -67,13 +65,7 @@ export function NoiseRuler({ deltaRaw, mdc, label = "raw", width = 420 }: { delt
       role="img"
       aria-label={`Raw change ${fmtSigned(deltaRaw)} against a noise band of plus or minus ${mdc.toFixed(1)}: ${outside ? "outside" : "inside"} the band`}
     >
-      <defs>
-        <pattern id={`h${id}`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="6" height="6" className="ruler__band-bg" />
-          <line x1="0" y1="0" x2="0" y2="6" className="ruler__hatch" />
-        </pattern>
-      </defs>
-      <rect x={x(-mdc)} y={BAND_TOP} width={x(mdc) - x(-mdc)} height={BAND_H} fill={`url(#h${id})`} className="ruler__band" rx={2} />
+      <rect x={x(-mdc)} y={BAND_TOP} width={x(mdc) - x(-mdc)} height={BAND_H} className="ruler__band" rx={3} />
       <line x1={x(-D)} x2={x(D)} y1={AXIS_Y} y2={AXIS_Y} className="ruler__axis" />
       {ticks.map((t) => (
         <line key={t} x1={x(t)} x2={x(t)} y1={AXIS_Y} y2={AXIS_Y + (t === 0 ? 7 : 4)} className={t === 0 ? "ruler__zero" : "ruler__tick"} />
@@ -90,11 +82,11 @@ export function NoiseRuler({ deltaRaw, mdc, label = "raw", width = 420 }: { delt
       </text>
       {hasArrow ? (
         <>
-          <line x1={MID} x2={end - dir * 7} y1={ARROW_Y} y2={ARROW_Y} className="ruler__arrow" />
-          <path d={`M ${end} ${ARROW_Y} l ${-dir * 9} -5.5 v 11 z`} className="ruler__head" />
+          <line x1={MID} x2={end - dir * 9} y1={ARROW_Y} y2={ARROW_Y} className="ruler__arrow" />
+          <path d={`M ${end} ${ARROW_Y} l ${-dir * 12} -7.5 v 15 z`} className="ruler__head" />
         </>
       ) : (
-        <circle cx={MID} cy={ARROW_Y} r={4} className="ruler__head" />
+        <circle cx={MID} cy={ARROW_Y} r={5} className="ruler__head" />
       )}
       <text x={vx} y={16} textAnchor={anchor} className="ruler__value">
         {value}

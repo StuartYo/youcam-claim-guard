@@ -2,17 +2,11 @@
  * Noise model. Repeated photos of an unchanged face under the same light give a per-metric SD on raw_score.
  * The minimum detectable change at 95% for the difference of two shots is MDC95 = 1.96 * sqrt(2) * SD.
  */
+import { claimKind, claimTypeReason, type ClaimKind, type ProductCategory } from "./claim-policy";
 import type { ConditionsResult } from "./conditions";
+import { METRIC_LABEL, METRICS, type Metric } from "./metrics";
 
-export const METRICS = ["moisture", "pore", "wrinkle", "radiance"] as const;
-export type Metric = (typeof METRICS)[number];
-
-export const METRIC_LABEL: Record<Metric, string> = {
-  moisture: "Moisture",
-  pore: "Pore",
-  wrinkle: "Wrinkle",
-  radiance: "Radiance",
-};
+export { METRIC_LABEL, METRICS, type Metric };
 
 export interface Score {
   ui: number;
@@ -57,7 +51,7 @@ export function buildNoiseModel(samples: Record<Metric, number[]>): NoiseModel {
   return out;
 }
 
-export type Verdict = "claimable" | "within-noise" | "no-visible-change" | "blocked-conditions";
+export type Verdict = "claimable" | "within-noise" | "no-visible-change" | "blocked-conditions" | "blocked-claim-type";
 
 /** The badge reports the ui_score change, so a claim also needs the display score to move by at least this much. */
 export const MIN_UI_CHANGE = 1;
@@ -76,6 +70,8 @@ export interface MetricVerdict {
   deltaUi: number;
   /** |deltaRaw| > MDC95, regardless of capture conditions. Shows what a noise-only check would decide. */
   aboveNoise: boolean;
+  /** Set when a product category was given: "skin", "appearance", or null when the category may not claim this metric. */
+  claimKind?: ClaimKind | null;
   reason: string;
 }
 
@@ -83,6 +79,8 @@ export interface Evaluation {
   /** True when at least one metric is claimable. */
   badgeAllowed: boolean;
   identical: boolean;
+  /** The product category the claim is about, when given. */
+  product?: ProductCategory;
   metrics: MetricVerdict[];
 }
 
@@ -104,9 +102,11 @@ export interface EvaluateInput {
   noise: NoiseModel;
   /** True when both photos are byte-identical (same SHA-256). */
   identical?: boolean;
+  /** Product category behind the claim. When given, metrics the category may not claim are blocked (see lib/claim-policy.ts). */
+  product?: ProductCategory;
 }
 
-export function evaluate({ before, after, conditions, noise, identical = false }: EvaluateInput): Evaluation {
+export function evaluate({ before, after, conditions, noise, identical = false, product }: EvaluateInput): Evaluation {
   const metrics: MetricVerdict[] = [];
   for (const m of METRICS) {
     const b = before[m];
@@ -116,11 +116,15 @@ export function evaluate({ before, after, conditions, noise, identical = false }
     const deltaUi = round(a.ui - b.ui, 3);
     const deltaUiPct = round((deltaUi / b.ui) * 100, 2);
     const mdc = noise[m].mdc95;
+    const kind = product ? claimKind(product, m) : undefined;
     let verdict: Verdict;
     let reason: string;
     if (identical) {
       verdict = "within-noise";
       reason = "Both photos are the same file, so nothing changed.";
+    } else if (product && kind === null) {
+      verdict = "blocked-claim-type";
+      reason = claimTypeReason(product, m);
     } else if (!conditions.match) {
       verdict = "blocked-conditions";
       reason = "The two photos were taken under different conditions, so the scores can't be compared.";
@@ -130,11 +134,12 @@ export function evaluate({ before, after, conditions, noise, identical = false }
     } else if (Math.abs(deltaRaw) > mdc) {
       verdict = "claimable";
       reason = `Raw score moved ${fmtSigned(deltaRaw)}, more than the ±${mdc.toFixed(1)} that same-light retakes produce.`;
+      if (kind === "appearance") reason += " This is an appearance claim: it describes the skin with the product on.";
     } else {
       verdict = "within-noise";
       reason = `Raw score moved ${fmtSigned(deltaRaw)}. Same-light retakes move up to ±${mdc.toFixed(1)}, so this can be noise.`;
     }
-    metrics.push({ metric: m, verdict, before: b, after: a, deltaRaw, deltaUi, deltaUiPct, mdc95: mdc, aboveNoise: !identical && Math.abs(deltaRaw) > mdc, reason });
+    metrics.push({ metric: m, verdict, before: b, after: a, deltaRaw, deltaUi, deltaUiPct, mdc95: mdc, aboveNoise: !identical && Math.abs(deltaRaw) > mdc, ...(product ? { claimKind: kind } : {}), reason });
   }
-  return { badgeAllowed: metrics.some((x) => x.verdict === "claimable"), identical, metrics };
+  return { badgeAllowed: metrics.some((x) => x.verdict === "claimable"), identical, ...(product ? { product } : {}), metrics };
 }

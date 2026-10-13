@@ -7,8 +7,9 @@ export interface PhoneScreen {
   tab: string;
   beforeImage: string;
   afterImage: string;
-  rows: Array<{ label: string; before: number; after: number; badge: string | null }>;
+  rows: Array<{ label: string; before: number; after: number; badge: string | null; note?: string }>;
   allowed: boolean;
+  /** Body text of the bottom card. */
   why: string;
 }
 
@@ -29,7 +30,7 @@ export function PhoneMockup({ screens }: { screens: PhoneScreen[] }) {
           </button>
         ))}
       </div>
-      <div className="phone" role="img" aria-label={`Brand app screen: ${s.allowed ? "progress badge shown" : "progress badge held back"}`}>
+      <div className="phone" role="img" aria-label={`Brand app screen: ${s.allowed ? "progress badge shown" : "progress badge blocked"}`}>
         <div className="phone__notch" />
         <div className="phone__screen">
           <div className="phone__status">
@@ -60,13 +61,14 @@ export function PhoneMockup({ screens }: { screens: PhoneScreen[] }) {
                   {r.before} <span aria-hidden="true">&rarr;</span> {r.after}
                 </span>
                 {s.allowed && r.badge && <span className="app__badge">{r.badge}</span>}
+                {r.note && <span className="app__note">{r.note}</span>}
               </li>
             ))}
           </ul>
           {s.allowed ? (
             <div className="app__card app__card--ok">
               <p className="app__card-title">Your progress</p>
-              <p>Measured in the same light as your last scan.</p>
+              <p>{s.why}</p>
               <span className="app__btn">See details</span>
             </div>
           ) : (

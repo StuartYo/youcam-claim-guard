@@ -3,8 +3,8 @@
 15 selfies of the same face, same day, no skincare change. SD Skin Analysis, 4 concerns (moisture, pore, wrinkle, radiance), 9 units each. 16 calls = 144 units. Balance after: 856 + 40 bonus.
 
 - session1: 6 shots, desk spot, same light
-- session2: 5 shots, window daylight (window behind, face backlit)
-- session3: 4 shots, ceiling light
+- session2: 5 shots, window daylight (window behind, face backlit), same room as session1
+- session3: 4 shots, ceiling light in another room, with different framing (air conditioner and wardrobe behind)
 
 Means and SDs are rounded half up to one decimal (`fix()` in `lib/summary.ts`, the same rule the app uses).
 
@@ -17,7 +17,7 @@ Means and SDs are rounded half up to one decimal (`fix()` in `lib/summary.ts`, t
 
 Findings
 1. Same file submitted twice returns identical scores (deterministic). Jitter comes from the photo, not the API.
-2. Same light, nothing changed: ui moves ±1, raw SD 1–2. Minimum detectable change (95%, 2.77×SD) on raw: moisture ≈ 5.1, pore ≈ 2.9, radiance ≈ 3.4.
-3. Light alone moves moisture from ui 73.3 (ceiling) to 80.0 (window): +9.1%. Raw: 58.2 → 77.0, +32%. A "moisture +9%" before/after claim can be produced by changing the room.
+2. Same light, nothing changed: ui moves ±1, raw SD 1–2. Minimum detectable change (95%, 2.77 × SD) on raw: moisture ≈ 5.1, pore ≈ 2.9, radiance ≈ 3.4.
+3. A different room and light moves moisture from ui 73.3 (ceiling) to 80.0 (window): +9.1%. Raw: 58.2 → 77.0, +32%. A "moisture +9%" before/after claim can be produced by changing the room. This is not a lamp-only test: room, framing and light all changed. A same-spot lamp-only retake is planned (`photos/session4/`).
 4. Pore is unstable under backlight (raw SD 8.9). Gate backlit photos.
 5. ui_score is a compressed display scale; raw_score is where the movement shows. Claim Guard should test on raw and report in ui.

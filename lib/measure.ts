@@ -14,8 +14,11 @@ export const CLIP_LUMA = 235;
 const luma = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 const round = (v: number, d = 1) => Math.round(v * 10 ** d) / 10 ** d;
 
+/** Refuse images above this many pixels before decoding them fully (decompression bombs). */
+export const MAX_INPUT_PIXELS = 40_000_000;
+
 export async function measure(input: Buffer | string): Promise<CaptureStats> {
-  const { data, info } = await sharp(input)
+  const { data, info } = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
     .rotate()
     .resize(BOX, BOX, { fit: "inside" })
     .removeAlpha()

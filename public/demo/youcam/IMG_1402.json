@@ -1,0 +1,72 @@
+{
+ "cached": {
+  "photo": "IMG_1402",
+  "fetched": "2026-10-13",
+  "endpoint": "GET /s2s/v2.0/task/skin-analysis/{task_id} (SD, dst_actions moisture,pore,wrinkle,radiance)",
+  "note": "Response as returned by YouCam. Signed mask URLs removed; they expired two hours after the call."
+ },
+ "response": {
+  "status": 200,
+  "data": {
+   "error": null,
+   "results": {
+    "output": [
+     {
+      "ui_score": 79,
+      "mask_urls": [
+       "<signed URL removed>"
+      ],
+      "raw_score": 75.77124559879303,
+      "type": "pore",
+      "url": null
+     },
+     {
+      "ui_score": 83,
+      "mask_urls": [
+       "<signed URL removed>"
+      ],
+      "raw_score": 86.41437292098999,
+      "type": "radiance",
+      "url": null
+     },
+     {
+      "ui_score": 80,
+      "mask_urls": [
+       "<signed URL removed>"
+      ],
+      "raw_score": 76.87656879425049,
+      "type": "moisture",
+      "url": null
+     },
+     {
+      "ui_score": 96,
+      "mask_urls": [
+       "<signed URL removed>"
+      ],
+      "raw_score": 98.20280075073242,
+      "type": "wrinkle",
+      "url": null
+     },
+     {
+      "score": 84.5,
+      "type": "all",
+      "url": null
+     },
+     {
+      "score": 24,
+      "type": "skin_age",
+      "url": null
+     },
+     {
+      "mask_urls": [
+       "<signed URL removed>"
+      ],
+      "type": "resize_image",
+      "url": null
+     }
+    ]
+   },
+   "task_status": "success"
+  }
+ }
+}

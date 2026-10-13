@@ -3,7 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import scores from "../data/scores.json";
 import type { DemoData } from "../lib/demo-types";
-import { fix, headline } from "../lib/summary";
+import { calibrationMarkdown, calibrationTable } from "../lib/calibration";
+import { fix, headline, pairSentence } from "../lib/summary";
 
 const data = scores as unknown as DemoData;
 const read = (f: string) => readFileSync(path.join(__dirname, "..", f), "utf-8");
@@ -29,16 +30,33 @@ describe("README and docs quote the numbers the page computes", () => {
     expect(noiseDoc).toContain(`ui ${h.ceilingMoistureUi} (ceiling) to ${h.windowMoistureUi} (window): +${h.lampMoisturePct}%`);
   });
 
-  it("pair counts", () => {
-    expect(h.pairs.sameLight).toEqual({ total: 30, passed: 30 });
-    expect(h.pairs.changed).toEqual({ total: 168, blocked: 168 });
-    expect(readme).toContain(`all ${h.pairs.sameLight.total} same-light pairs and block all ${h.pairs.changed.total} pairs`);
-    expect(readme).toContain(`${h.pairs.ceilingOnly.total} ceiling-only pairs`);
+  it("pair counts: every in-sample pair is counted once", () => {
+    expect(h.pairs.total).toBe(210);
+    expect(h.pairs.sameSetup).toEqual({ total: 42, passed: 42, desk: 30, ceiling: 12 });
+    expect(h.pairs.changed).toEqual({ total: 168, blocked: 168, acrossSetups: 148, bothBacklit: 20 });
+    expect(h.pairs.sameSetup.total + h.pairs.changed.total).toBe(h.pairs.total);
+    expect(readme).toContain(pairSentence(h.pairs));
+  });
+
+  it("the README calibration table is the one the page renders", () => {
+    expect(readme).toContain(calibrationMarkdown(calibrationTable(data.photos)));
+  });
+
+  it("no lamp-only wording for photos that changed room", () => {
+    for (const doc of [readme, noiseDoc, read("docs/positive-control-2026-10-13.md"), read("app/page.tsx"), read("lib/demo.ts"), read("scripts/cover.mjs")]) {
+      expect(doc).not.toMatch(/Only the lamp changed: ceiling|Changing only the lamp|Light alone moves|Different lamp|Lamp changed, nothing else/);
+      expect(doc).not.toMatch(/only the face changed/i);
+      expect(doc).not.toMatch(/held back/i);
+    }
+  });
+
+  it("the page uses three demo-data labels, one per place", () => {
+    const n = (f: string) => (read(f).match(/Demo data:/g) ?? []).length;
+    expect(n("app/page.tsx") + n("components/CaseExplorer.tsx") + n("components/ResultPanel.tsx") + n("components/LiveMode.tsx")).toBe(3);
   });
 
   it("no stale numbers remain", () => {
     for (const doc of [readme, noiseDoc, read("docs/positive-control-2026-10-13.md")]) {
-      expect(doc).not.toMatch(/\b148\b/);
       expect(doc).not.toContain("73.2");
     }
   });

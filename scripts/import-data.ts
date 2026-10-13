@@ -13,6 +13,7 @@ import sharp from "sharp";
 import { measure } from "../lib/measure";
 import { METRICS, type Scores } from "../lib/noise";
 import type { BaselinePhoto, DemoData, DemoPhoto, SimulatedPhoto } from "../lib/demo-types";
+import { exportCached } from "./export-cached";
 import { writeNoiseModel } from "./gen-noise-model";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -110,16 +111,42 @@ async function main() {
     console.log("vto", s.id, JSON.stringify(parsed.scores), JSON.stringify(capture));
   }
 
+  // Held-out photos (optional): photos/session4/<setup>/*.jpg with results in results/s4/<setup>/*.json.
+  // Kept under `heldOut`, never in `photos`, so they don't touch the noise model or the in-sample calibration.
+  // photos/session4/lamp-only.json ({ beforeId, afterId, beforeNote, afterNote }) names the same-spot pair where only the
+  // lamp changed; it becomes the headline case on the page.
+  const heldOut: DemoPhoto[] = [];
+  const s4 = path.join(ROOT, "results", "s4");
+  if (existsSync(s4)) {
+    for (const setup of readdirSync(s4).sort()) {
+      const dir = path.join(s4, setup);
+      for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
+        const id = f.replace(/^\d+_/, "").replace(/\.json$/, "");
+        const src = path.join(ROOT, "photos", "session4", setup, `${id}.jpg`);
+        if (!existsSync(src)) throw new Error(`missing photo ${src}`);
+        const dst = path.join(outImg, `${id}.jpg`);
+        await sharp(src).rotate().resize(720, 720, { fit: "inside" }).jpeg({ quality: 80, mozjpeg: true }).toFile(dst);
+        const capture = await measure(dst);
+        heldOut.push({ id, session: "s4", setup, sessionLabel: `Held-out: ${setup}`, image: `/demo/${id}.jpg`, capture, ...parseScores(path.join(dir, f)) });
+      }
+    }
+  }
+  const lampOnlyFile = path.join(ROOT, "photos", "session4", "lamp-only.json");
+  const lampOnly = existsSync(lampOnlyFile) ? (JSON.parse(readFileSync(lampOnlyFile, "utf-8")) as DemoData["lampOnly"]) : undefined;
+
   const data: DemoData = {
     source: "YouCam SD skin analysis, 2026-10-13, dst_actions moisture,pore,wrinkle,radiance. Developer's own photos, used with consent.",
     photos,
     duplicates,
     baselines,
     simulated,
+    ...(heldOut.length ? { heldOut } : {}),
+    ...(lampOnly ? { lampOnly } : {}),
   };
   writeFileSync(path.join(ROOT, "data", "scores.json"), JSON.stringify(data, null, 1) + "\n");
   console.log(`wrote data/scores.json (${photos.length} photos, ${duplicates.length} duplicate)`);
   writeNoiseModel();
+  exportCached();
 }
 
 main().catch((e) => {

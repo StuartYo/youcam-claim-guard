@@ -19,33 +19,53 @@ export function sessionMean(photos: DemoPhoto[], session: Session, metric: Metri
   return mean(photos.filter((p) => p.session === session).map((p) => p.scores[metric]![scale]));
 }
 
+/** Sessions the limits were set on. Later sessions (held-out photos) never enter these numbers. */
+export const IN_SAMPLE: ReadonlySet<Session> = new Set<Session>(["s1", "s2", "s3"]);
+
 export interface PairTally {
-  /** Ordered pairs inside session1 (same spot, same light). All should pass. */
-  sameLight: { total: number; passed: number };
-  /** Ordered pairs with a different light or at least one backlit photo (any pair touching session2, plus s1 vs s3). All should be blocked. */
-  changed: { total: number; blocked: number };
-  /** Ordered pairs inside session3 (ceiling light, same spot). Not used for calibration; reported for completeness. */
-  ceilingOnly: { total: number; passed: number };
+  /** All ordered pairs of the in-sample photos. */
+  total: number;
+  /** Ordered pairs taken at the same spot under the same light, no backlight: desk spot (s1) and ceiling light (s3). All should pass. */
+  sameSetup: { total: number; passed: number; desk: number; ceiling: number };
+  /** Ordered pairs that cross setups, or sit inside the backlit window session (s2). All should be blocked. */
+  changed: { total: number; blocked: number; acrossSetups: number; bothBacklit: number };
 }
 
-export function pairTally(photos: DemoPhoto[]): PairTally {
-  const t: PairTally = { sameLight: { total: 0, passed: 0 }, changed: { total: 0, blocked: 0 }, ceilingOnly: { total: 0, passed: 0 } };
+export function pairTally(all: DemoPhoto[]): PairTally {
+  const photos = all.filter((p) => IN_SAMPLE.has(p.session));
+  const t: PairTally = {
+    total: 0,
+    sameSetup: { total: 0, passed: 0, desk: 0, ceiling: 0 },
+    changed: { total: 0, blocked: 0, acrossSetups: 0, bothBacklit: 0 },
+  };
   for (const a of photos)
     for (const b of photos) {
       if (a === b) continue;
+      t.total++;
       const ok = compareConditions(a.capture, b.capture).match;
-      if (a.session === "s1" && b.session === "s1") {
-        t.sameLight.total++;
-        if (ok) t.sameLight.passed++;
-      } else if (a.session === "s3" && b.session === "s3") {
-        t.ceilingOnly.total++;
-        if (ok) t.ceilingOnly.passed++;
+      if (a.session === b.session && a.session !== "s2") {
+        t.sameSetup.total++;
+        if (a.session === "s1") t.sameSetup.desk++;
+        else t.sameSetup.ceiling++;
+        if (ok) t.sameSetup.passed++;
       } else {
         t.changed.total++;
+        if (a.session === b.session) t.changed.bothBacklit++;
+        else t.changed.acrossSetups++;
         if (!ok) t.changed.blocked++;
       }
     }
   return t;
+}
+
+/** One sentence for the page, README and docs, so the pair counts read the same everywhere. */
+export function pairSentence(t: PairTally): string {
+  return (
+    `Of the ${t.total} ordered photo pairs, the ${t.sameSetup.total} taken at the same spot under the same light ` +
+    `(${t.sameSetup.desk} desk spot, ${t.sameSetup.ceiling} ceiling light) all ${t.sameSetup.passed === t.sameSetup.total ? "pass" : `but ${t.sameSetup.total - t.sameSetup.passed} pass`}, ` +
+    `and the ${t.changed.total} that cross setups or include a backlit window photo ` +
+    `${t.changed.blocked === t.changed.total ? "are all blocked" : `are blocked in ${t.changed.blocked} cases`}.`
+  );
 }
 
 export interface Headline {
@@ -60,7 +80,7 @@ export interface Headline {
 }
 
 export function headline(data: DemoData): Headline {
-  const P = data.photos;
+  const P = data.photos.filter((p) => IN_SAMPLE.has(p.session));
   const cu = sessionMean(P, "s3", "moisture", "ui");
   const wu = sessionMean(P, "s2", "moisture", "ui");
   return {

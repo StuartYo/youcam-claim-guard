@@ -12,3 +12,4 @@ results/
 
 # Local live-mode cache
 .cache/
+.next-*/

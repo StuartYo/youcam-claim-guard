@@ -1,47 +1,46 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { parseScoresInput, toClaimCheckResponse } from "@/lib/brand-api";
+import { MAX_BODY_BYTES, parseClaimCheckRequest, RequestError, toClaimCheckResponse } from "@/lib/brand-api";
 import { compareConditions } from "@/lib/conditions";
 import { noiseModel } from "@/lib/demo";
 import { measure } from "@/lib/measure";
 import { evaluate } from "@/lib/noise";
+import { clientIp } from "@/lib/server/image";
+import { BodyTooLarge, limiter, readBodyLimited, tooMany } from "@/lib/server/limits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-
-function decodeImage(v: unknown, label: string): Buffer {
-  if (typeof v !== "string" || !v) throw new Error(`${label}.image_base64 is required`);
-  const b = Buffer.from(v.replace(/^data:image\/\w+;base64,/, ""), "base64");
-  if (b.length === 0) throw new Error(`${label}.image_base64 is not valid base64`);
-  if (b.length > MAX_IMAGE_BYTES) throw new Error(`${label}.image_base64 is larger than 4 MB`);
-  return b;
-}
+/** Requests per IP per minute. Each one decodes two images, so keep it modest. */
+const PER_MINUTE = 30;
 
 /**
- * Brand-facing check. The brand already has YouCam scores for both photos; it sends them with the photos.
+ * Brand-facing check. The brand already has YouCam scores for both photos; it sends them with the photos
+ * and, optionally, the product category the claim is about.
  * No YouCam call is made here, so this endpoint costs no credits.
  */
 export async function POST(req: Request) {
-  let body: Record<string, Record<string, unknown>>;
+  const rl = limiter("claim-check", PER_MINUTE).take(clientIp(req.headers));
+  if (!rl.ok) return tooMany(rl.retryAfter);
+  if (!(req.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
+    return NextResponse.json({ error: "Content-Type must be application/json." }, { status: 415 });
+  }
+  let body: unknown;
   try {
-    body = await req.json();
-  } catch {
+    body = JSON.parse((await readBodyLimited(req, MAX_BODY_BYTES)).toString("utf-8"));
+  } catch (e) {
+    if (e instanceof BodyTooLarge) return NextResponse.json({ error: e.message }, { status: 413 });
     return NextResponse.json({ error: "Body must be JSON." }, { status: 400 });
   }
   try {
-    const before = parseScoresInput(body?.before?.scores);
-    const after = parseScoresInput(body?.after?.scores);
-    if (!before || !after) throw new Error("before.scores and after.scores must contain moisture, pore, wrinkle or radiance with ui and raw values");
-    const bi = decodeImage(body.before.image_base64, "before");
-    const ai = decodeImage(body.after.image_base64, "after");
-    const [bs, as] = await Promise.all([measure(bi), measure(ai)]);
+    const r = parseClaimCheckRequest(body);
+    const [bs, as] = await Promise.all([measure(r.beforeImage), measure(r.afterImage)]);
     const conditions = compareConditions(bs, as);
-    const identical = createHash("sha256").update(bi).digest("hex") === createHash("sha256").update(ai).digest("hex");
-    const ev = evaluate({ before, after, conditions, noise: noiseModel, identical });
+    const identical = createHash("sha256").update(r.beforeImage).digest("hex") === createHash("sha256").update(r.afterImage).digest("hex");
+    const ev = evaluate({ before: r.before, after: r.after, conditions, noise: noiseModel, identical, product: r.product });
     return NextResponse.json(toClaimCheckResponse(conditions, ev));
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Invalid request" }, { status: 400 });
+    if (e instanceof RequestError) return NextResponse.json({ error: e.message }, { status: 400 });
+    return NextResponse.json({ error: "The photos could not be read. Send JPEG or PNG under 4 MB each." }, { status: 400 });
   }
 }
