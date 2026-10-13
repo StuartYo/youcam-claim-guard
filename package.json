@@ -15,7 +15,8 @@
     "mcp": "tsx mcp/server.ts"
   },
   "dependencies": {
-    "next": "^15.5.4",
+    "eslint-config-next": "15.5.27",
+    "next": "15.5.27",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "server-only": "^0.0.1",
