@@ -227,6 +227,12 @@ npm install
 npm run mcp
 ```
 
+To list the tools from a terminal without an MCP client (needs `jq`):
+
+```
+npm run mcp < examples/tools-list.jsonl | jq -cR 'fromjson? | .result.tools[]? | {name, title}'
+```
+
 Tools:
 
 - `claim_check`: `before_scores`, `after_scores` (YouCam `output` array or `{moisture:{ui,raw},...}`), `before_image`, `after_image` (local JPEG/PNG path up to 4 MB, or base64), optional `product_category`. Returns a one-line verdict and the same JSON as `/api/v1/claim-check`.
