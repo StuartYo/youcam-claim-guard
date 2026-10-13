@@ -109,9 +109,18 @@ export function fmtSigned(v: number, d = 1): string {
   return v > 0 ? `+${s}` : `−${s}`;
 }
 
+/** One rounding rule for every percent shown next to a badge: whole percent, half away from zero (−2.5% shows as −3%). */
+export function roundPct(deltaUiPct: number): number {
+  return Math.sign(deltaUiPct) * Math.round(Math.abs(deltaUiPct) + 1e-9);
+}
+
+export function pctText(deltaUiPct: number): string {
+  const r = roundPct(deltaUiPct);
+  return `${r > 0 ? "+" : r < 0 ? "−" : "±"}${Math.abs(r)}%`;
+}
+
 export function badgeText(metric: Metric, deltaUiPct: number): string {
-  const r = Math.round(deltaUiPct);
-  return `${BADGE_LABEL[metric]} ${r > 0 ? "+" : r < 0 ? "−" : "±"}${Math.abs(r)}%`;
+  return `${BADGE_LABEL[metric]} ${pctText(deltaUiPct)}`;
 }
 
 export interface EvaluateInput {
@@ -160,7 +169,7 @@ export function evaluate({ before, after, conditions, noise, identical = false, 
       else if (kind === "appearance") reason += " This is an appearance claim: it describes the skin with the product on.";
     } else {
       verdict = "within-noise";
-      reason = `Raw score moved ${fmtSigned(deltaRaw)}. Same-light retakes move up to ±${mdc.toFixed(1)}, so this can be noise.`;
+      reason = `Raw score moved ${fmtSigned(deltaRaw)}. Same-light retakes stay within about ±${mdc.toFixed(1)} (95% band), so this can be noise.`;
     }
     metrics.push({ metric: m, verdict, before: b, after: a, deltaRaw, deltaUi, deltaUiPct, mdc95: mdc, aboveNoise: !identical && Math.abs(deltaRaw) > mdc, ...(product ? { claimKind: kind } : {}), reason });
   }

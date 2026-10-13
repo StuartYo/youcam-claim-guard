@@ -248,8 +248,9 @@ export default function Home() {
             </p>
             {room ? (
               <p className="fact">
-                Same face, same room, no skincare in between. Switching from the ceiling light to a desk lamp, with the phone re-positioned, raised
-                the average moisture score of four shots each from {room.moistureCeilingUi} to {room.moistureLampUi} (+{room.moisturePct}%). The pair
+                Same face, same room, no skincare in between. Four ceiling-light shots and four desk-lamp shots, taken minutes apart with the phone
+                re-positioned: the average moisture score is {room.moistureCeilingUi} under the ceiling light and {room.moistureLampUi} under the lamp
+                (+{room.moisturePct}%). The pair
                 in the card is one of those pairs: moisture {badgeText("moisture", heroMoisture.deltaUiPct).replace("Moisture ", "")}.
               </p>
             ) : (
@@ -309,7 +310,8 @@ export default function Home() {
               On the developer&apos;s first {h.photoCount} photos, all {h.pairs.changed.total} pairs with a changed setup were blocked and all{" "}
               {h.pairs.sameSetup.total} same-light retake pairs passed; on {v2.photos} photos from a later evening,{" "}
               {v2.differentLight.total - v2.differentLight.passed} of {v2.differentLight.total} changed-light pairs were blocked and{" "}
-              {v2.sameLightSkinChange.passed} of {v2.sameLightSkinChange.total} same-lamp pairs before and after a moisturizer passed.
+              {v2.sameLightSkinChange.passed} of {v2.sameLightSkinChange.total} same-lamp pairs before and after a moisturizer passed (re-run on
+              photos that informed the change, not held out).
             </p>
           )}
 

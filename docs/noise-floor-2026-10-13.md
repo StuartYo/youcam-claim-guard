@@ -18,7 +18,7 @@ Means and SDs are rounded half up to one decimal (`fix()` in `lib/summary.ts`, t
 Findings
 1. Same file submitted twice returns identical scores (deterministic). Jitter comes from the photo, not the API.
 2. Same light, nothing changed: ui moves ±1, raw SD 1–2. Minimum detectable change (95%, 2.77 × SD) on raw: moisture ≈ 5.1, pore ≈ 2.9, radiance ≈ 3.4. Superseded the same evening: held-out retakes were noisier, and the app now uses an SD pooled over five sets of retakes (moisture 7.1, pore 8.9, wrinkle 1.5, radiance 3.8). See "Update" below.
-3. A different room and light moves moisture from ui 73.3 (ceiling) to 80.0 (window): +9.1%. Raw: 58.2 → 77.0, +32%. A "moisture +9%" before/after claim can be produced by changing the room. This is not a lamp-only test: room, framing and light all changed. The later same-room test (`docs/held-out-2026-10-13.md`) also moved the phone, so it is not lamp-only either.
+3. A different room and light moves moisture from ui 73.3 (ceiling) to 80.0 (window): +9.2% (from the unrounded means, rounded once). Raw: 58.2 → 77.0, +32%. A "moisture +9%" before/after claim can be produced by changing the room. This is not a lamp-only test: room, framing and light all changed. The later same-room test (`docs/held-out-2026-10-13.md`) also moved the phone, so it is not lamp-only either.
 4. Pore is unstable under backlight (raw SD 8.9). Gate backlit photos.
 5. ui_score is a compressed display scale; raw_score is where the movement shows. Claim Guard should test on raw and report in ui.
 

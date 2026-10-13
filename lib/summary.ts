@@ -89,8 +89,8 @@ export function headline(data: DemoData): Headline {
     windowMoistureUi: fix(wu),
     ceilingMoistureRaw: fix(sessionMean(P, "s3", "moisture", "raw")),
     windowMoistureRaw: fix(sessionMean(P, "s2", "moisture", "raw")),
-    // Computed from the rounded means that are printed next to it, so a reader can redo the division.
-    lampMoisturePct: fix(((Number(fix(wu)) - Number(fix(cu))) / Number(fix(cu))) * 100),
+    // Computed from the unrounded means (80.0 / 73.25), then rounded once with the same rule.
+    lampMoisturePct: fix(((wu - cu) / cu) * 100),
     pairs: pairTally(P),
   };
 }
@@ -105,7 +105,7 @@ export function heldOutMean(data: DemoData, setup: string, metric: Metric, scale
 export interface SameRoomHeadline {
   moistureCeilingUi: string;
   moistureLampUi: string;
-  /** Relative change of the rounded mean moisture ui, ceiling to lamp, in percent. */
+  /** Relative change of the mean moisture ui, ceiling to lamp, in percent (unrounded means, rounded once). */
   moisturePct: string;
   wrinkleCeilingUi: string;
   wrinkleLampUi: string;
@@ -117,10 +117,13 @@ export function sameRoomHeadline(data: DemoData): SameRoomHeadline | null {
   if (!has("A") || !has("B")) return null;
   const a = heldOutMean(data, "A", "moisture", "ui");
   const b = heldOutMean(data, "B", "moisture", "ui");
+  const mean4 = (s: string) => mean((data.heldOut ?? []).filter((p) => p.setup === s).map((p) => p.scores.moisture!.ui));
+  const [ra, rb] = [mean4("A"), mean4("B")];
   return {
     moistureCeilingUi: a,
     moistureLampUi: b,
-    moisturePct: fix(((Number(b) - Number(a)) / Number(a)) * 100),
+    // Unrounded means, rounded once, same as the window headline.
+    moisturePct: fix(((rb - ra) / ra) * 100),
     wrinkleCeilingUi: heldOutMean(data, "A", "wrinkle", "ui"),
     wrinkleLampUi: heldOutMean(data, "B", "wrinkle", "ui"),
   };

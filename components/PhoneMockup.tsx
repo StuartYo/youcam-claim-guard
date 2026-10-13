@@ -42,7 +42,7 @@ export function PhoneMockup({ screens }: { screens: PhoneScreen[] }) {
             </span>
           </div>
           <div className="app__head">
-            <span className="app__brand">Aster Skin</span>
+            <span className="app__brand">Demo Brand</span>
             <span className="app__title">Your skin report</span>
           </div>
           <div className="app__photos">

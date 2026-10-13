@@ -1,6 +1,6 @@
 import { APPEARANCE_LABEL, CLAIM_POLICY } from "@/lib/claim-policy";
 import type { ConditionsResult } from "@/lib/conditions";
-import { badgeText, fmtSigned, METRIC_HINT, METRIC_LABEL, type Evaluation, type Verdict } from "@/lib/noise";
+import { badgeText, fmtSigned, pctText, roundPct, METRIC_HINT, METRIC_LABEL, type Evaluation, type Verdict } from "@/lib/noise";
 import { NoiseRuler } from "./NoiseRuler";
 
 export interface PanelSide {
@@ -71,7 +71,7 @@ export function ResultPanel({
   conditions: ConditionsResult;
   evaluation: Evaluation;
 }) {
-  const shown = evaluation.metrics.filter((m) => Math.round(m.deltaUiPct) !== 0);
+  const shown = evaluation.metrics.filter((m) => roundPct(m.deltaUiPct) !== 0);
   const confirmed = evaluation.metrics.filter((m) => m.verdict === "claimable");
   // A confirmed drop is real, but it is not a gain a badge can claim.
   const allowed = confirmed.filter((m) => m.deltaUi > 0);
@@ -175,7 +175,7 @@ export function ResultPanel({
                 </span>
                 <span className="metric__ui">
                   score {m.before.ui} &rarr; {m.after.ui}
-                  <em>{fmtSigned(m.deltaUiPct, 1)}%</em>
+                  <em>{pctText(m.deltaUiPct)}</em>
                 </span>
                 <span className={`tag tag--${m.verdict === "claimable" && m.deltaUi < 0 ? "within-noise" : m.verdict}`}>
                   {m.verdict === "claimable" && m.deltaUi < 0 ? "Real drop: no badge" : VERDICT_LABEL[m.verdict]}

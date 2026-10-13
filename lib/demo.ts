@@ -122,7 +122,7 @@ function lampOnlyCase(): DemoCase | null {
   return makeCase(
     "same-room-lamp",
     l.title,
-    "Same face, same room, no skincare: the ceiling light was swapped for a desk lamp and the phone was re-positioned, and the moisture and wrinkle scores rose.",
+    "Same face, same room, no skincare: in a ceiling-light shot and a desk-lamp shot taken minutes apart (the phone was re-positioned), moisture and wrinkle score higher under the lamp.",
     [
       `Photos ${l.beforeId} (${l.beforeNote}) and ${l.afterId} (${l.afterNote}), taken on the same evening.`,
       "In the lamp photos the phone sits lower and tilts up, so the ceiling is in frame and the face is smaller. This is not a lamp-only change.",

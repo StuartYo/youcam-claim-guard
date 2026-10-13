@@ -17,17 +17,17 @@ All four YouCam scores are higher-is-better: a higher wrinkle score means fewer 
 We took 15 selfies of the same face on the same day with no skincare in between, under three setups, and ran each through YouCam SD skin analysis (`docs/noise-floor-2026-10-13.md`).
 
 - Same light, nothing changed: `ui_score` moves about ±1, `raw_score` SD is 1 to 2 in that session. Retakes on a later evening spread more (moisture SD up to 3.75), so the noise floor now pools both; see Noise floor.
-- Moving to a different room and light (ceiling light in one room, a bright window in another) moved average moisture from ui 73.3 to 80.0 (+9.1%), raw 58.2 to 77.0.
+- Moving to a different room and light (ceiling light in one room, a bright window in another) moved average moisture from ui 73.3 to 80.0 (+9.2%), raw 58.2 to 77.0.
 - The same file sent twice returns identical scores. The jitter comes from the photo, not the API.
 
 On a different evening we took 12 more (`docs/held-out-2026-10-13.md`), in one room: four under the ceiling light, four under a desk lamp with the phone re-positioned (lower and tilted up, so the ceiling is in frame), and four under the same lamp about 20 minutes after washing the face and applying a moisturizer.
 
-- Ceiling light to desk lamp in the same room, with the phone re-positioned, moved average moisture from ui 70.8 to 75.3 (+6.4%) and wrinkle from ui 86.5 to 96.3. No skincare in between.
+- Ceiling light to desk lamp in the same room (the two sets were taken minutes apart, lamp first), with the phone re-positioned, moved average moisture from ui 70.8 to 75.3 (+6.4%) and wrinkle from ui 86.5 to 96.3. No skincare in between.
 - The real moisturizer moved average moisture from ui 75.3 to 75.0.
 
-A "+9% moisture" claim can be produced by moving to a different room, and "+6%" by switching on a desk lamp.
+A "+9% moisture" claim can be produced by moving to a different room, and "+6%" by a desk-lamp shot taken minutes apart from a ceiling-light shot.
 
-Numbers in this README, the docs and the page come from `data/scores.json` with one rounding rule (half up, `fix()` in `lib/summary.ts`). `tests/docs-consistency.test.ts` fails if a quoted number drifts from the data.
+Numbers in this README, the docs and the page come from `data/scores.json` with one rounding rule (half up, `fix()` in `lib/summary.ts`; a percent change is computed from the unrounded means and rounded once). Badge percentages are whole numbers, rounded half away from zero (`roundPct()` in `lib/noise.ts`). `tests/docs-consistency.test.ts` fails if a quoted number drifts from the data.
 
 ## Why brands need this
 
