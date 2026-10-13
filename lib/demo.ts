@@ -30,11 +30,11 @@ export interface DemoCase {
   evaluation: Evaluation;
 }
 
-function side(p: DemoPhoto, note?: string): CaseSide {
-  return { id: p.id, image: p.image, caption: `${p.id} · ${note ?? p.sessionLabel}` };
+function side(p: DemoPhoto, note: string): CaseSide {
+  return { id: p.id, image: p.image, caption: `${p.id} · ${note}` };
 }
 
-function makeCase(slug: string, title: string, summary: string, beforeId: string, afterId: string): DemoCase {
+function makeCase(slug: string, title: string, summary: string, beforeId: string, afterId: string, beforeNote: string, afterNote: string): DemoCase {
   const b = photo(beforeId);
   const a = photo(afterId);
   const conditions = compareConditions(b.capture, a.capture);
@@ -42,8 +42,8 @@ function makeCase(slug: string, title: string, summary: string, beforeId: string
     slug,
     title,
     summary,
-    before: side(b),
-    after: side(a),
+    before: side(b, beforeNote),
+    after: side(a, afterNote),
     conditions,
     evaluation: evaluate({ before: b.scores, after: a.scores, conditions, noise: noiseModel }),
   };
@@ -65,21 +65,25 @@ function identicalCase(): DemoCase {
   };
 }
 
-/** Positive control: one session1 photo against the same photo with YouCam virtual foundation applied. */
+/**
+ * Positive control: the exact file sent to YouCam virtual foundation (IMG_1407 resized to 1440 x 1920) against the try-on output.
+ * Both sides went through the same resize, so only the foundation differs.
+ */
 function simulatedCase(): DemoCase {
   const sim = demoData.simulated?.find((x) => x.id === "IMG_1407_foundation1");
   if (!sim) throw new Error("simulated photo IMG_1407_foundation1 missing");
-  const b = photo(sim.sourceId);
-  const conditions = compareConditions(b.capture, sim.capture);
+  const base = demoData.baselines?.find((x) => x.id === sim.baselineId);
+  if (!base) throw new Error(`baseline ${sim.baselineId} missing`);
+  const conditions = compareConditions(base.capture, sim.capture);
   return {
     slug: "real-change",
     title: "Real change (positive control)",
     summary:
-      "The before photo is an untouched same-light selfie. The after photo is the same photo with YouCam virtual foundation applied, so the face changed and the light did not. The skin itself was not treated: this simulates a product effect. Moisture, radiance and pore move past the noise floor, so the badge goes through. The pore score went down, and Claim Guard reports that too.",
-    before: side(b, "untouched, same light"),
-    after: { id: sim.id, image: sim.image, caption: "same photo with YouCam virtual foundation applied (simulated product effect)" },
+      "Before is an untouched desk-spot selfie, resized to the 1440 x 1920 file that went to YouCam virtual foundation. After is the try-on output. Same file, same resize, same light: only the face changed. The skin itself was not treated, so this simulates a product effect. Moisture and radiance move past the noise floor and the badge goes through for those two. Pore and wrinkle stay back.",
+    before: { id: base.id, image: base.image, caption: `${base.id} · untouched, resized like the try-on input` },
+    after: { id: sim.id, image: sim.image, caption: `${sim.id} · same file with YouCam virtual foundation (simulated product effect)` },
     conditions,
-    evaluation: evaluate({ before: b.scores, after: sim.scores, conditions, noise: noiseModel }),
+    evaluation: evaluate({ before: base.scores, after: sim.scores, conditions, noise: noiseModel }),
   };
 }
 
@@ -87,9 +91,11 @@ export const demoCases: DemoCase[] = [
   makeCase(
     "same-light",
     "Same light, nothing changed",
-    "Two selfies taken minutes apart at the same spot under the same light. No skincare in between. The app would still show a moisture gain.",
+    "Two selfies taken minutes apart at the desk spot under the same light. No skincare in between. The app would still show a moisture gain.",
     "IMG_1409",
     "IMG_1406",
+    "desk spot, first shot",
+    "desk spot, minutes later, same light",
   ),
   makeCase(
     "lamp-window",
@@ -97,6 +103,8 @@ export const demoCases: DemoCase[] = [
     "Same face, same day. The before photo is under a ceiling light, the after photo is in front of a bright window. The API reports a large moisture gain.",
     "IMG_1374",
     "IMG_1399",
+    "ceiling light",
+    "window behind the head (backlit)",
   ),
   makeCase(
     "lamp-desk",
@@ -104,6 +112,8 @@ export const demoCases: DemoCase[] = [
     "No backlight this time. The raw moisture jump is larger than the noise floor, so a noise check alone would approve it. The capture check catches the different light.",
     "IMG_1373",
     "IMG_1406",
+    "ceiling light",
+    "desk spot, different light from the ceiling shot",
   ),
   identicalCase(),
   simulatedCase(),

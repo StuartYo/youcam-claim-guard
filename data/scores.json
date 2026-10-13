@@ -4,7 +4,7 @@
   {
    "id": "IMG_1406",
    "session": "s1",
-   "sessionLabel": "Same spot, same light",
+   "sessionLabel": "Desk spot",
    "image": "/demo/IMG_1406.jpg",
    "capture": {
     "centerLum": 110.3,
@@ -37,7 +37,7 @@
   {
    "id": "IMG_1407",
    "session": "s1",
-   "sessionLabel": "Same spot, same light",
+   "sessionLabel": "Desk spot",
    "image": "/demo/IMG_1407.jpg",
    "capture": {
     "centerLum": 109.7,
@@ -70,7 +70,7 @@
   {
    "id": "IMG_1408",
    "session": "s1",
-   "sessionLabel": "Same spot, same light",
+   "sessionLabel": "Desk spot",
    "image": "/demo/IMG_1408.jpg",
    "capture": {
     "centerLum": 103.3,
@@ -103,7 +103,7 @@
   {
    "id": "IMG_1409",
    "session": "s1",
-   "sessionLabel": "Same spot, same light",
+   "sessionLabel": "Desk spot",
    "image": "/demo/IMG_1409.jpg",
    "capture": {
     "centerLum": 104.8,
@@ -136,7 +136,7 @@
   {
    "id": "IMG_1410",
    "session": "s1",
-   "sessionLabel": "Same spot, same light",
+   "sessionLabel": "Desk spot",
    "image": "/demo/IMG_1410.jpg",
    "capture": {
     "centerLum": 102.6,
@@ -169,7 +169,7 @@
   {
    "id": "IMG_1411",
    "session": "s1",
-   "sessionLabel": "Same spot, same light",
+   "sessionLabel": "Desk spot",
    "image": "/demo/IMG_1411.jpg",
    "capture": {
     "centerLum": 105.2,
@@ -523,10 +523,46 @@
    "skinAge": 25
   }
  ],
+ "baselines": [
+  {
+   "id": "IMG_1407_1920",
+   "sourceId": "IMG_1407",
+   "note": "IMG_1407 resized to 1440 x 1920, the exact file sent to the virtual try-on",
+   "image": "/demo/IMG_1407_1920.jpg",
+   "capture": {
+    "centerLum": 109.6,
+    "borderLum": 213.1,
+    "backlightRatio": 0.514,
+    "clippedBorder": 0,
+    "redBlue": 1.602
+   },
+   "scores": {
+    "pore": {
+     "ui": 73,
+     "raw": 61.626
+    },
+    "radiance": {
+     "ui": 82,
+     "raw": 83.086
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.73
+    },
+    "moisture": {
+     "ui": 76,
+     "raw": 66.841
+    }
+   },
+   "overall": 82,
+   "skinAge": 25
+  }
+ ],
  "simulated": [
   {
    "id": "IMG_1407_foundation1",
    "sourceId": "IMG_1407",
+   "baselineId": "IMG_1407_1920",
    "effect": "YouCam makeup virtual try-on, foundation (color #A87C66, color 25, glow 60, coverage 80)",
    "image": "/demo/IMG_1407_foundation1.jpg",
    "capture": {

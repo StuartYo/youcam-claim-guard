@@ -2,6 +2,7 @@
  * One-off importer: raw API results + full-size photos (both gitignored) -> compact committed data.
  *   results/{test1,s1,s2,s3}/*.json  ->  data/scores.json
  *   photos/session{1,2,3}/*.jpg      ->  public/demo/*.jpg (720px long side) + capture stats
+ *   results/vto_before/*.json + photos/vto/IMG_1407_1920.jpg -> baseline for the positive control (same resize as the VTO input)
  *   results/vto/*.json + photos/vto/*.jpg -> simulated photos (YouCam makeup VTO output, see docs/positive-control-2026-10-13.md)
  * Then regenerates data/noise-model.json.
  * Usage: npm run data:import
@@ -11,14 +12,22 @@ import path from "node:path";
 import sharp from "sharp";
 import { measure } from "../lib/measure";
 import { METRICS, type Scores } from "../lib/noise";
-import type { DemoData, DemoPhoto, SimulatedPhoto } from "../lib/demo-types";
+import type { BaselinePhoto, DemoData, DemoPhoto, SimulatedPhoto } from "../lib/demo-types";
 import { writeNoiseModel } from "./gen-noise-model";
 
 const ROOT = path.resolve(__dirname, "..");
 const SESSIONS = [
-  { id: "s1", dir: "session1", label: "Same spot, same light", results: ["test1", "s1"] },
+  { id: "s1", dir: "session1", label: "Desk spot", results: ["test1", "s1"] },
   { id: "s2", dir: "session2", label: "Window behind (backlit)", results: ["s2"] },
   { id: "s3", dir: "session3", label: "Ceiling light", results: ["s3"] },
+] as const;
+
+/**
+ * Untouched photos re-encoded exactly like a simulated photo's input, analyzed on their own.
+ * The positive control compares against this, so the resize is the same on both sides and only the effect differs.
+ */
+const BASELINES = [
+  { id: "IMG_1407_1920", sourceId: "IMG_1407", note: "IMG_1407 resized to 1440 x 1920, the exact file sent to the virtual try-on", results: "vto_before", photoDir: "vto" },
 ] as const;
 
 /** Photos edited with YouCam makeup virtual try-on. Not captures, so they stay out of the noise model. */
@@ -26,6 +35,7 @@ const SIMULATED = [
   {
     id: "IMG_1407_foundation1",
     sourceId: "IMG_1407",
+    baselineId: "IMG_1407_1920",
     effect: "YouCam makeup virtual try-on, foundation (color #A87C66, color 25, glow 60, coverage 80)",
   },
 ] as const;
@@ -75,6 +85,19 @@ async function main() {
     }
   }
 
+  const baselines: BaselinePhoto[] = [];
+  for (const s of BASELINES) {
+    const dir = path.join(ROOT, "results", s.results);
+    const resultFile = readdirSync(dir).find((f) => f.replace(/^\d+_/, "") === `${s.id}.json`);
+    if (!resultFile) throw new Error(`missing results/${s.results}/*_${s.id}.json`);
+    const parsed = parseScores(path.join(dir, resultFile));
+    const dst = path.join(outImg, `${s.id}.jpg`);
+    await sharp(path.join(ROOT, "photos", s.photoDir, `${s.id}.jpg`)).rotate().resize(720, 720, { fit: "inside" }).jpeg({ quality: 80, mozjpeg: true }).toFile(dst);
+    const capture = await measure(dst);
+    baselines.push({ id: s.id, sourceId: s.sourceId, note: s.note, image: `/demo/${s.id}.jpg`, capture, ...parsed });
+    console.log("baseline", s.id, JSON.stringify(parsed.scores), JSON.stringify(capture));
+  }
+
   const simulated: SimulatedPhoto[] = [];
   for (const s of SIMULATED) {
     const resultFile = readdirSync(path.join(ROOT, "results", "vto")).find((f) => f.replace(/^\d+_/, "") === `${s.id}.json`);
@@ -91,6 +114,7 @@ async function main() {
     source: "YouCam SD skin analysis, 2026-10-13, dst_actions moisture,pore,wrinkle,radiance. Developer's own photos, used with consent.",
     photos,
     duplicates,
+    baselines,
     simulated,
   };
   writeFileSync(path.join(ROOT, "data", "scores.json"), JSON.stringify(data, null, 1) + "\n");

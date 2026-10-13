@@ -10,6 +10,7 @@ export interface PanelSide {
 const VERDICT_LABEL: Record<Verdict, string> = {
   claimable: "Claimable",
   "within-noise": "Within noise",
+  "no-visible-change": "No visible change",
   "blocked-conditions": "Conditions differ",
 };
 
@@ -68,6 +69,7 @@ export function ResultPanel({
 }) {
   const shown = evaluation.metrics.filter((m) => Math.round(m.deltaUiPct) !== 0);
   const allowed = evaluation.metrics.filter((m) => m.verdict === "claimable");
+  const held = shown.filter((m) => m.verdict !== "claimable");
   const blockedBy = evaluation.identical ? "same-file" : !conditions.match ? "conditions" : "noise";
 
   return (
@@ -97,7 +99,7 @@ export function ResultPanel({
           <div className="badges">
             {shown.length === 0 && <span className="badge badge--none">No change</span>}
             {shown.map((m) => (
-              <span key={m.metric} className={`badge ${m.verdict === "claimable" ? "badge--ok" : "badge--struck"}`}>
+              <span key={m.metric} className="badge">
                 {badgeText(m.metric, m.deltaUiPct)}
               </span>
             ))}
@@ -106,9 +108,23 @@ export function ResultPanel({
         <div className={`decision__verdict ${allowed.length ? "is-ok" : "is-blocked"}`}>
           <p className="eyebrow">Claim Guard</p>
           {allowed.length ? (
-            <p className="verdict-line">
-              Badge allowed for {allowed.map((m) => METRIC_LABEL[m.metric].toLowerCase()).join(", ")}
-            </p>
+            <>
+              <p className="verdict-line">
+                Badge allowed for {allowed.map((m) => METRIC_LABEL[m.metric].toLowerCase()).join(" and ")}
+              </p>
+              <div className="badges badges--verdict">
+                {allowed.map((m) => (
+                  <span key={m.metric} className="badge badge--ok">
+                    {badgeText(m.metric, m.deltaUiPct)}
+                  </span>
+                ))}
+                {held.map((m) => (
+                  <span key={m.metric} className="badge badge--held" title={m.reason}>
+                    {badgeText(m.metric, m.deltaUiPct)} held back
+                  </span>
+                ))}
+              </div>
+            </>
           ) : (
             <p className="verdict-line">
               Badge blocked
@@ -142,7 +158,7 @@ export function ResultPanel({
                 </span>
                 <span className={`tag tag--${m.verdict}`}>{VERDICT_LABEL[m.verdict]}</span>
               </div>
-              <NoiseRuler deltaRaw={m.deltaRaw} mdc={m.mdc95} verdict={m.verdict} />
+              <NoiseRuler deltaRaw={m.deltaRaw} mdc={m.mdc95} />
               <p className="metric__reason">
                 {m.reason}
                 {m.verdict === "blocked-conditions" && (

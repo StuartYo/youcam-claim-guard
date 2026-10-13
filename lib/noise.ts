@@ -57,7 +57,10 @@ export function buildNoiseModel(samples: Record<Metric, number[]>): NoiseModel {
   return out;
 }
 
-export type Verdict = "claimable" | "within-noise" | "blocked-conditions";
+export type Verdict = "claimable" | "within-noise" | "no-visible-change" | "blocked-conditions";
+
+/** The badge reports the ui_score change, so a claim also needs the display score to move by at least this much. */
+export const MIN_UI_CHANGE = 1;
 
 export interface MetricVerdict {
   metric: Metric;
@@ -69,6 +72,8 @@ export interface MetricVerdict {
   /** Relative change of the display score in percent. This is what a badge would show. */
   deltaUiPct: number;
   mdc95: number;
+  /** after.ui - before.ui */
+  deltaUi: number;
   /** |deltaRaw| > MDC95, regardless of capture conditions. Shows what a noise-only check would decide. */
   aboveNoise: boolean;
   reason: string;
@@ -108,7 +113,8 @@ export function evaluate({ before, after, conditions, noise, identical = false }
     const a = after[m];
     if (!b || !a) continue;
     const deltaRaw = round(a.raw - b.raw, 3);
-    const deltaUiPct = round(((a.ui - b.ui) / b.ui) * 100, 2);
+    const deltaUi = round(a.ui - b.ui, 3);
+    const deltaUiPct = round((deltaUi / b.ui) * 100, 2);
     const mdc = noise[m].mdc95;
     let verdict: Verdict;
     let reason: string;
@@ -118,6 +124,9 @@ export function evaluate({ before, after, conditions, noise, identical = false }
     } else if (!conditions.match) {
       verdict = "blocked-conditions";
       reason = "The two photos were taken under different conditions, so the scores can't be compared.";
+    } else if (Math.abs(deltaRaw) > mdc && Math.abs(deltaUi) < MIN_UI_CHANGE) {
+      verdict = "no-visible-change";
+      reason = `Raw score moved ${fmtSigned(deltaRaw)}, past the ±${mdc.toFixed(1)} floor, but the display score stayed at ${a.ui}. A badge would show no change, so there is nothing to claim.`;
     } else if (Math.abs(deltaRaw) > mdc) {
       verdict = "claimable";
       reason = `Raw score moved ${fmtSigned(deltaRaw)}, more than the ±${mdc.toFixed(1)} that same-light retakes produce.`;
@@ -125,7 +134,7 @@ export function evaluate({ before, after, conditions, noise, identical = false }
       verdict = "within-noise";
       reason = `Raw score moved ${fmtSigned(deltaRaw)}. Same-light retakes move up to ±${mdc.toFixed(1)}, so this can be noise.`;
     }
-    metrics.push({ metric: m, verdict, before: b, after: a, deltaRaw, deltaUiPct, mdc95: mdc, aboveNoise: !identical && Math.abs(deltaRaw) > mdc, reason });
+    metrics.push({ metric: m, verdict, before: b, after: a, deltaRaw, deltaUi, deltaUiPct, mdc95: mdc, aboveNoise: !identical && Math.abs(deltaRaw) > mdc, reason });
   }
   return { badgeAllowed: metrics.some((x) => x.verdict === "claimable"), identical, metrics };
 }

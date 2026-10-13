@@ -86,9 +86,28 @@ describe("evaluate", () => {
     expect(ev.metrics[0].verdict).toBe("within-noise");
   });
 
-  it("positive control: same photo with virtual foundation passes the capture check and is claimable", () => {
+  it("raw past MDC but display score unchanged is not claimable", () => {
+    // Wrinkle in the positive control: ui 97 -> 97, raw +0.36 against a floor of 0.17.
+    const before = { wrinkle: { ui: 97, raw: 98.73 } };
+    const after = { wrinkle: { ui: 97, raw: 99.09 } };
+    const ev = evaluate({ before, after, conditions: match, noise });
+    expect(Math.abs(ev.metrics[0].deltaRaw)).toBeGreaterThan(noise.wrinkle.mdc95);
+    expect(ev.metrics[0].deltaUi).toBe(0);
+    expect(ev.metrics[0].verdict).toBe("no-visible-change");
+    expect(ev.metrics[0].aboveNoise).toBe(true);
+    expect(ev.badgeAllowed).toBe(false);
+  });
+
+  it("a one-point display change with raw past MDC is claimable", () => {
+    const before = { wrinkle: { ui: 97, raw: 98.73 } };
+    const after = { wrinkle: { ui: 98, raw: 99.09 } };
+    expect(evaluate({ before, after, conditions: match, noise }).metrics[0].verdict).toBe("claimable");
+  });
+
+  it("positive control: resized original vs the same file with virtual foundation", () => {
     const sim = data.simulated!.find((x) => x.id === "IMG_1407_foundation1")!;
-    const b = p(sim.sourceId);
+    const b = data.baselines!.find((x) => x.id === sim.baselineId)!;
+    expect(b.sourceId).toBe(sim.sourceId);
     const conditions = compareConditions(b.capture, sim.capture);
     expect(conditions.match).toBe(true);
     const ev = evaluate({ before: b.scores, after: sim.scores, conditions, noise });
@@ -96,12 +115,19 @@ describe("evaluate", () => {
     const v = (m: Metric) => ev.metrics.find((x) => x.metric === m)!;
     expect(v("moisture").verdict).toBe("claimable");
     expect(v("radiance").verdict).toBe("claimable");
-    expect(v("pore").verdict).toBe("claimable");
-    expect(v("pore").deltaRaw).toBeLessThan(0);
+    // With the resize matched on both sides, pore moves -2.8 against a floor of 2.9.
+    expect(v("pore").verdict).toBe("within-noise");
+    expect(v("wrinkle").verdict).toBe("no-visible-change");
+  });
+
+  it("resizing alone (2560 px vs 1920 px of IMG_1407) stays inside the noise floor", () => {
+    const b = data.baselines!.find((x) => x.id === "IMG_1407_1920")!;
+    const ev = evaluate({ before: p("IMG_1407").scores, after: b.scores, conditions: match, noise });
+    for (const m of ev.metrics) expect(m.aboveNoise).toBe(false);
   });
 
   it("simulated photos stay out of the session data", () => {
     const ids = new Set(data.photos.map((x) => x.id));
-    for (const s of data.simulated ?? []) expect(ids.has(s.id)).toBe(false);
+    for (const s of [...(data.simulated ?? []), ...(data.baselines ?? [])]) expect(ids.has(s.id)).toBe(false);
   });
 });

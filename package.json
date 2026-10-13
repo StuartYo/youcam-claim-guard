@@ -10,7 +10,8 @@
     "test": "vitest run",
     "data:import": "tsx scripts/import-data.ts",
     "data:noise": "tsx scripts/gen-noise-model.ts",
-    "calibrate": "tsx scripts/calibrate.ts"
+    "calibrate": "tsx scripts/calibrate.ts",
+    "cover": "node scripts/cover.mjs"
   },
   "dependencies": {
     "next": "^15.5.4",

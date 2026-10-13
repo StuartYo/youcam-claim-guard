@@ -3,12 +3,26 @@
  * For each check: the largest difference seen inside one session (must pass) and the smallest
  * difference seen between sessions (should fail), then every photo pair through compareConditions.
  * Exits 1 if any required pass/fail expectation is broken.
- * Usage: npm run calibrate
+ *
+ * These numbers are IN-SAMPLE: the thresholds were chosen by looking at these same 15 photos
+ * (one face, one phone, one day). A full pass/block score here is a consistency check, not an accuracy figure.
+ *
+ * Held-out check: photos that played no part in choosing the thresholds go in photos/session4/,
+ * one subfolder per lighting setup, e.g.
+ *   photos/session4/desk-a/*.jpg        same spot, same light  -> pairs inside the folder should pass
+ *   photos/session4/window-b/*.jpg      another setup          -> pairs across folders should be blocked
+ *   photos/session4/backlit-c/*.jpg     folder name starting with "backlit" -> pairs inside should be blocked too
+ * The held-out rates are reported separately and never mixed into the in-sample numbers.
+ *
+ * Usage: npm run calibrate [-- --heldout photos/session4]
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import { compareConditions, THRESHOLDS, type CaptureStats } from "../lib/conditions";
 import type { DemoData, DemoPhoto } from "../lib/demo-types";
+import { measure } from "../lib/measure";
+import { pairTally } from "../lib/summary";
 
 const ROOT = path.resolve(__dirname, "..");
 const data: DemoData = JSON.parse(readFileSync(path.join(ROOT, "data", "scores.json"), "utf-8"));
@@ -67,8 +81,57 @@ for (const [k, t] of [...tally.entries()].sort()) {
   if (!good) ok = false;
   console.log(`  ${k}: ${t.pass} pass, ${t.fail} fail  [expect ${want}] ${good ? "OK" : "BROKEN"}  failing checks: ${[...t.reasons].join(", ") || "none"}`);
 }
-if (!ok) {
-  console.error("\nCalibration expectations broken.");
-  process.exit(1);
+const t = pairTally(P);
+console.log(
+  `\nIn-sample summary: ${t.sameLight.passed}/${t.sameLight.total} same-light pairs pass, ${t.changed.blocked}/${t.changed.total} different-light or backlit pairs blocked, ` +
+    `${t.ceilingOnly.passed}/${t.ceilingOnly.total} ceiling-only pairs pass (not used for calibration).`,
+);
+console.log("These are in-sample: the limits were set on these same photos. They are not an accuracy figure.");
+
+async function heldOut(dir: string) {
+  const abs = path.resolve(ROOT, dir);
+  const groups = existsSync(abs) ? readdirSync(abs).filter((g) => statSync(path.join(abs, g)).isDirectory()) : [];
+  const shots: Array<{ group: string; file: string; capture: CaptureStats }> = [];
+  for (const g of groups.sort()) {
+    for (const f of readdirSync(path.join(abs, g)).filter((x) => /\.(jpe?g|png)$/i.test(x)).sort()) {
+      // Same pipeline as the demo photos: 720 px JPEG, then measure (which resizes to 360 px).
+      const buf = await sharp(path.join(abs, g, f)).rotate().resize(720, 720, { fit: "inside" }).jpeg({ quality: 80, mozjpeg: true }).toBuffer();
+      shots.push({ group: g, file: f, capture: await measure(buf) });
+    }
+  }
+  if (shots.length < 2) {
+    console.log(`\nHeld-out check: pending (no photos in ${dir}/<setup>/).`);
+    return;
+  }
+  let sameTotal = 0, samePass = 0, crossTotal = 0, crossBlock = 0, backTotal = 0, backBlock = 0;
+  for (const a of shots)
+    for (const b of shots) {
+      if (a === b) continue;
+      const ok = compareConditions(a.capture, b.capture).match;
+      if (a.group !== b.group) {
+        crossTotal++;
+        if (!ok) crossBlock++;
+      } else if (a.group.toLowerCase().startsWith("backlit")) {
+        backTotal++;
+        if (!ok) backBlock++;
+      } else {
+        sameTotal++;
+        if (ok) samePass++;
+      }
+    }
+  const rate = (n: number, d: number) => (d ? `${n}/${d} (${((n / d) * 100).toFixed(1)}%)` : "no pairs");
+  console.log(`\nHeld-out check (${shots.length} photos in ${groups.length} setups from ${dir}, not used to set the limits)`);
+  for (const s of shots) console.log(`  ${s.group}/${s.file}  ${JSON.stringify(s.capture)}`);
+  console.log(`  same setup, pass rate:        ${rate(samePass, sameTotal)}`);
+  console.log(`  different setup, block rate:  ${rate(crossBlock, crossTotal)}`);
+  console.log(`  backlit setup, block rate:    ${rate(backBlock, backTotal)}`);
 }
-console.log("\nCalibration OK.");
+
+const argIdx = process.argv.indexOf("--heldout");
+heldOut(argIdx > 0 ? process.argv[argIdx + 1] : "photos/session4").then(() => {
+  if (!ok) {
+    console.error("\nIn-sample calibration expectations broken.");
+    process.exit(1);
+  }
+  console.log("\nIn-sample calibration OK.");
+});
