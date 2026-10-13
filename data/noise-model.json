@@ -1,0 +1,31 @@
+{
+ "generatedBy": "scripts/gen-noise-model.ts",
+ "basis": "session1: 6 photos (IMG_1406, IMG_1407, IMG_1408, IMG_1409, IMG_1410, IMG_1411), same spot and light, raw_score",
+ "formula": "MDC95 = 1.96 * sqrt(2) * SD",
+ "metrics": {
+  "moisture": {
+   "n": 6,
+   "mean": 65.095,
+   "sd": 1.853,
+   "mdc95": 5.136
+  },
+  "pore": {
+   "n": 6,
+   "mean": 61.081,
+   "sd": 1.034,
+   "mdc95": 2.867
+  },
+  "wrinkle": {
+   "n": 6,
+   "mean": 98.777,
+   "sd": 0.06,
+   "mdc95": 0.166
+  },
+  "radiance": {
+   "n": 6,
+   "mean": 81.517,
+   "sd": 1.219,
+   "mdc95": 3.38
+  }
+ }
+}

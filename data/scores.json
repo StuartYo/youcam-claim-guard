@@ -1,0 +1,526 @@
+{
+ "source": "YouCam SD skin analysis, 2026-10-13, dst_actions moisture,pore,wrinkle,radiance. Developer's own photos, used with consent.",
+ "photos": [
+  {
+   "id": "IMG_1406",
+   "session": "s1",
+   "sessionLabel": "Same spot, same light",
+   "image": "/demo/IMG_1406.jpg",
+   "capture": {
+    "centerLum": 110.3,
+    "borderLum": 213.8,
+    "backlightRatio": 0.516,
+    "clippedBorder": 0,
+    "redBlue": 1.606
+   },
+   "scores": {
+    "pore": {
+     "ui": 73,
+     "raw": 61.89
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 81.901
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.849
+    },
+    "moisture": {
+     "ui": 76,
+     "raw": 67.215
+    }
+   },
+   "overall": 81.75,
+   "skinAge": 25
+  },
+  {
+   "id": "IMG_1407",
+   "session": "s1",
+   "sessionLabel": "Same spot, same light",
+   "image": "/demo/IMG_1407.jpg",
+   "capture": {
+    "centerLum": 109.7,
+    "borderLum": 213.3,
+    "backlightRatio": 0.514,
+    "clippedBorder": 0,
+    "redBlue": 1.601
+   },
+   "scores": {
+    "pore": {
+     "ui": 73,
+     "raw": 62.432
+    },
+    "radiance": {
+     "ui": 82,
+     "raw": 83.187
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.699
+    },
+    "moisture": {
+     "ui": 76,
+     "raw": 66.765
+    }
+   },
+   "overall": 82,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1408",
+   "session": "s1",
+   "sessionLabel": "Same spot, same light",
+   "image": "/demo/IMG_1408.jpg",
+   "capture": {
+    "centerLum": 103.3,
+    "borderLum": 210.7,
+    "backlightRatio": 0.49,
+    "clippedBorder": 0.001,
+    "redBlue": 1.604
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 60.875
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 80.327
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.792
+    },
+    "moisture": {
+     "ui": 75,
+     "raw": 63.506
+    }
+   },
+   "overall": 81.25,
+   "skinAge": 25
+  },
+  {
+   "id": "IMG_1409",
+   "session": "s1",
+   "sessionLabel": "Same spot, same light",
+   "image": "/demo/IMG_1409.jpg",
+   "capture": {
+    "centerLum": 104.8,
+    "borderLum": 212,
+    "backlightRatio": 0.494,
+    "clippedBorder": 0,
+    "redBlue": 1.6
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 61.345
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 79.872
+    },
+    "moisture": {
+     "ui": 75,
+     "raw": 62.419
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.724
+    }
+   },
+   "overall": 81.25,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1410",
+   "session": "s1",
+   "sessionLabel": "Same spot, same light",
+   "image": "/demo/IMG_1410.jpg",
+   "capture": {
+    "centerLum": 102.6,
+    "borderLum": 210.3,
+    "backlightRatio": 0.488,
+    "clippedBorder": 0.002,
+    "redBlue": 1.608
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 60.351
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 81.723
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.763
+    },
+    "moisture": {
+     "ui": 76,
+     "raw": 65.541
+    }
+   },
+   "overall": 81.5,
+   "skinAge": 25
+  },
+  {
+   "id": "IMG_1411",
+   "session": "s1",
+   "sessionLabel": "Same spot, same light",
+   "image": "/demo/IMG_1411.jpg",
+   "capture": {
+    "centerLum": 105.2,
+    "borderLum": 212.6,
+    "backlightRatio": 0.495,
+    "clippedBorder": 0.001,
+    "redBlue": 1.596
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 59.59
+    },
+    "radiance": {
+     "ui": 82,
+     "raw": 82.093
+    },
+    "moisture": {
+     "ui": 76,
+     "raw": 65.123
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.835
+    }
+   },
+   "overall": 81.75,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1399",
+   "session": "s2",
+   "sessionLabel": "Window behind (backlit)",
+   "image": "/demo/IMG_1399.jpg",
+   "capture": {
+    "centerLum": 92.8,
+    "borderLum": 210.8,
+    "backlightRatio": 0.44,
+    "clippedBorder": 0.561,
+    "redBlue": 1.515
+   },
+   "scores": {
+    "pore": {
+     "ui": 68,
+     "raw": 51.268
+    },
+    "radiance": {
+     "ui": 83,
+     "raw": 86.407
+    },
+    "moisture": {
+     "ui": 81,
+     "raw": 79.047
+    },
+    "wrinkle": {
+     "ui": 96,
+     "raw": 98.312
+    }
+   },
+   "overall": 82,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1400",
+   "session": "s2",
+   "sessionLabel": "Window behind (backlit)",
+   "image": "/demo/IMG_1400.jpg",
+   "capture": {
+    "centerLum": 97.5,
+    "borderLum": 217.9,
+    "backlightRatio": 0.447,
+    "clippedBorder": 0.623,
+    "redBlue": 1.522
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 59.983
+    },
+    "radiance": {
+     "ui": 83,
+     "raw": 84.898
+    },
+    "moisture": {
+     "ui": 79,
+     "raw": 73.521
+    },
+    "wrinkle": {
+     "ui": 95,
+     "raw": 98.158
+    }
+   },
+   "overall": 82.25,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1401",
+   "session": "s2",
+   "sessionLabel": "Window behind (backlit)",
+   "image": "/demo/IMG_1401.jpg",
+   "capture": {
+    "centerLum": 94.6,
+    "borderLum": 220.3,
+    "backlightRatio": 0.43,
+    "clippedBorder": 0.64,
+    "redBlue": 1.514
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 61.024
+    },
+    "radiance": {
+     "ui": 84,
+     "raw": 87.173
+    },
+    "wrinkle": {
+     "ui": 95,
+     "raw": 98.036
+    },
+    "moisture": {
+     "ui": 80,
+     "raw": 77.961
+    }
+   },
+   "overall": 82.75,
+   "skinAge": 23
+  },
+  {
+   "id": "IMG_1402",
+   "session": "s2",
+   "sessionLabel": "Window behind (backlit)",
+   "image": "/demo/IMG_1402.jpg",
+   "capture": {
+    "centerLum": 96.4,
+    "borderLum": 219.9,
+    "backlightRatio": 0.438,
+    "clippedBorder": 0.636,
+    "redBlue": 1.527
+   },
+   "scores": {
+    "pore": {
+     "ui": 79,
+     "raw": 75.771
+    },
+    "radiance": {
+     "ui": 83,
+     "raw": 86.414
+    },
+    "moisture": {
+     "ui": 80,
+     "raw": 76.877
+    },
+    "wrinkle": {
+     "ui": 96,
+     "raw": 98.203
+    }
+   },
+   "overall": 84.5,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1403",
+   "session": "s2",
+   "sessionLabel": "Window behind (backlit)",
+   "image": "/demo/IMG_1403.jpg",
+   "capture": {
+    "centerLum": 96.1,
+    "borderLum": 219.8,
+    "backlightRatio": 0.437,
+    "clippedBorder": 0.632,
+    "redBlue": 1.515
+   },
+   "scores": {
+    "pore": {
+     "ui": 74,
+     "raw": 64.476
+    },
+    "moisture": {
+     "ui": 80,
+     "raw": 77.735
+    },
+    "radiance": {
+     "ui": 83,
+     "raw": 86.492
+    },
+    "wrinkle": {
+     "ui": 96,
+     "raw": 98.241
+    }
+   },
+   "overall": 83.25,
+   "skinAge": 23
+  },
+  {
+   "id": "IMG_1373",
+   "session": "s3",
+   "sessionLabel": "Ceiling light",
+   "image": "/demo/IMG_1373.jpg",
+   "capture": {
+    "centerLum": 121.4,
+    "borderLum": 143.9,
+    "backlightRatio": 0.843,
+    "clippedBorder": 0,
+    "redBlue": 1.474
+   },
+   "scores": {
+    "pore": {
+     "ui": 74,
+     "raw": 64.068
+    },
+    "radiance": {
+     "ui": 84,
+     "raw": 88.235
+    },
+    "moisture": {
+     "ui": 73,
+     "raw": 58.019
+    },
+    "wrinkle": {
+     "ui": 94,
+     "raw": 97.441
+    }
+   },
+   "overall": 81.25,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1374",
+   "session": "s3",
+   "sessionLabel": "Ceiling light",
+   "image": "/demo/IMG_1374.jpg",
+   "capture": {
+    "centerLum": 121.1,
+    "borderLum": 142.2,
+    "backlightRatio": 0.852,
+    "clippedBorder": 0,
+    "redBlue": 1.466
+   },
+   "scores": {
+    "pore": {
+     "ui": 78,
+     "raw": 74.525
+    },
+    "radiance": {
+     "ui": 85,
+     "raw": 88.989
+    },
+    "moisture": {
+     "ui": 74,
+     "raw": 59.937
+    },
+    "wrinkle": {
+     "ui": 94,
+     "raw": 97.612
+    }
+   },
+   "overall": 82.75,
+   "skinAge": 25
+  },
+  {
+   "id": "IMG_1375",
+   "session": "s3",
+   "sessionLabel": "Ceiling light",
+   "image": "/demo/IMG_1375.jpg",
+   "capture": {
+    "centerLum": 118.3,
+    "borderLum": 141.8,
+    "backlightRatio": 0.834,
+    "clippedBorder": 0,
+    "redBlue": 1.461
+   },
+   "scores": {
+    "pore": {
+     "ui": 76,
+     "raw": 68.417
+    },
+    "radiance": {
+     "ui": 84,
+     "raw": 88.377
+    },
+    "wrinkle": {
+     "ui": 96,
+     "raw": 98.201
+    },
+    "moisture": {
+     "ui": 73,
+     "raw": 57.631
+    }
+   },
+   "overall": 82.25,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1376",
+   "session": "s3",
+   "sessionLabel": "Ceiling light",
+   "image": "/demo/IMG_1376.jpg",
+   "capture": {
+    "centerLum": 116.7,
+    "borderLum": 141.5,
+    "backlightRatio": 0.825,
+    "clippedBorder": 0,
+    "redBlue": 1.458
+   },
+   "scores": {
+    "pore": {
+     "ui": 75,
+     "raw": 67.312
+    },
+    "radiance": {
+     "ui": 84,
+     "raw": 87.656
+    },
+    "moisture": {
+     "ui": 73,
+     "raw": 57.268
+    },
+    "wrinkle": {
+     "ui": 95,
+     "raw": 97.975
+    }
+   },
+   "overall": 81.75,
+   "skinAge": 25
+  }
+ ],
+ "duplicates": [
+  {
+   "id": "IMG_1406",
+   "note": "Same file submitted a second time",
+   "scores": {
+    "pore": {
+     "ui": 73,
+     "raw": 61.89
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 81.901
+    },
+    "moisture": {
+     "ui": 76,
+     "raw": 67.215
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.849
+    }
+   },
+   "overall": 81.75,
+   "skinAge": 25
+  }
+ ]
+}
