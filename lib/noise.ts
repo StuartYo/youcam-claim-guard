@@ -6,9 +6,9 @@
  */
 import { claimKind, claimTypeReason, type ClaimKind, type ProductCategory } from "./claim-policy";
 import type { ConditionsResult } from "./conditions";
-import { METRIC_LABEL, METRICS, type Metric } from "./metrics";
+import { BADGE_LABEL, METRIC_HINT, METRIC_LABEL, METRICS, type Metric } from "./metrics";
 
-export { METRIC_LABEL, METRICS, type Metric };
+export { BADGE_LABEL, METRIC_HINT, METRIC_LABEL, METRICS, type Metric };
 
 export interface Score {
   ui: number;
@@ -111,7 +111,7 @@ export function fmtSigned(v: number, d = 1): string {
 
 export function badgeText(metric: Metric, deltaUiPct: number): string {
   const r = Math.round(deltaUiPct);
-  return `${METRIC_LABEL[metric]} ${r > 0 ? "+" : r < 0 ? "−" : "±"}${Math.abs(r)}%`;
+  return `${BADGE_LABEL[metric]} ${r > 0 ? "+" : r < 0 ? "−" : "±"}${Math.abs(r)}%`;
 }
 
 export interface EvaluateInput {
@@ -124,6 +124,9 @@ export interface EvaluateInput {
   /** Product category behind the claim. When given, metrics the category may not claim are blocked (see lib/claim-policy.ts). */
   product?: ProductCategory;
 }
+
+/** A badge is an improvement claim: the change must be claimable and the display score must go up. */
+export const isGainBadge = (m: MetricVerdict) => m.verdict === "claimable" && m.deltaUi > 0;
 
 export function evaluate({ before, after, conditions, noise, identical = false, product }: EvaluateInput): Evaluation {
   const metrics: MetricVerdict[] = [];
@@ -153,12 +156,13 @@ export function evaluate({ before, after, conditions, noise, identical = false, 
     } else if (Math.abs(deltaRaw) > mdc) {
       verdict = "claimable";
       reason = `Raw score moved ${fmtSigned(deltaRaw)}, more than the ±${mdc.toFixed(1)} that same-light retakes produce.`;
-      if (kind === "appearance") reason += " This is an appearance claim: it describes the skin with the product on.";
+      if (deltaUi < 0) reason += " This is a real drop, not a gain, so there is no improvement badge.";
+      else if (kind === "appearance") reason += " This is an appearance claim: it describes the skin with the product on.";
     } else {
       verdict = "within-noise";
       reason = `Raw score moved ${fmtSigned(deltaRaw)}. Same-light retakes move up to ±${mdc.toFixed(1)}, so this can be noise.`;
     }
     metrics.push({ metric: m, verdict, before: b, after: a, deltaRaw, deltaUi, deltaUiPct, mdc95: mdc, aboveNoise: !identical && Math.abs(deltaRaw) > mdc, ...(product ? { claimKind: kind } : {}), reason });
   }
-  return { badgeAllowed: metrics.some((x) => x.verdict === "claimable"), identical, ...(product ? { product } : {}), metrics };
+  return { badgeAllowed: metrics.some(isGainBadge), identical, ...(product ? { product } : {}), metrics };
 }

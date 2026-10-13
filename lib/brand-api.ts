@@ -1,6 +1,6 @@
 import { APPEARANCE_LABEL, isProductCategory, PRODUCT_CATEGORIES, type ClaimKind, type ProductCategory } from "./claim-policy";
 import type { ConditionsResult } from "./conditions";
-import { badgeText, METRICS, type Evaluation, type Metric, type Scores } from "./noise";
+import { badgeText, isGainBadge, METRICS, type Evaluation, type Metric, type Scores } from "./noise";
 
 /** Shape of the brand-facing response. Kept separate so the docs example and the endpoint can't drift. */
 export interface ClaimCheckResponse {
@@ -14,6 +14,7 @@ export interface ClaimCheckResponse {
     display_change_pct: number;
     raw_delta: number;
     mdc95: number;
+    /** Badge text for a confirmed gain. Null otherwise, including a confirmed drop. */
     badge: string | null;
     /** "skin" or "appearance" when a product_category was sent; null when the category may not claim this metric. */
     claim_kind?: ClaimKind | null;
@@ -34,9 +35,9 @@ export function toClaimCheckResponse(conditions: ConditionsResult, ev: Evaluatio
       display_change_pct: m.deltaUiPct,
       raw_delta: m.deltaRaw,
       mdc95: m.mdc95,
-      badge: m.verdict === "claimable" ? badgeText(m.metric, m.deltaUiPct) : null,
+      badge: isGainBadge(m) ? badgeText(m.metric, m.deltaUiPct) : null,
       ...(m.claimKind !== undefined ? { claim_kind: m.claimKind } : {}),
-      ...(m.verdict === "claimable" && m.claimKind === "appearance" ? { badge_label: APPEARANCE_LABEL } : {}),
+      ...(isGainBadge(m) && m.claimKind === "appearance" ? { badge_label: APPEARANCE_LABEL } : {}),
       reason: m.reason,
     })),
   };

@@ -26,7 +26,7 @@ export async function measure(input: Buffer | string): Promise<CaptureStats> {
     .raw()
     .toBuffer({ resolveWithObject: true });
   const { width: w, height: h, channels: c } = info;
-  let cL = 0, cR = 0, cB = 0, cN = 0, sL = 0, sN = 0, clip = 0;
+  let cL = 0, cR = 0, cB = 0, cN = 0, sL = 0, sN = 0, clip = 0, sR = 0, sB = 0;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * c;
@@ -37,6 +37,11 @@ export async function measure(input: Buffer | string): Promise<CaptureStats> {
       } else if ((x < w * SIDE.width || x >= w * (1 - SIDE.width)) && y >= h * SIDE.y0 && y < h * SIDE.y1) {
         sL += L; sN++;
         if (L >= CLIP_LUMA) clip++;
+        else {
+          // Background colour, without blown-out pixels (they read as white whatever the light).
+          sR += r;
+          sB += b;
+        }
       }
     }
   }
@@ -48,5 +53,6 @@ export async function measure(input: Buffer | string): Promise<CaptureStats> {
     backlightRatio: round(centerLum / borderLum, 3),
     clippedBorder: round(clip / sN, 3),
     redBlue: round(cR / Math.max(cB, 1), 3),
+    bgRedBlue: round(sB ? sR / sB : 1, 3),
   };
 }

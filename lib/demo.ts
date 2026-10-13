@@ -26,7 +26,10 @@ export interface CaseSide {
 export interface DemoCase {
   slug: string;
   title: string;
+  /** One sentence shown above the result. */
   summary: string;
+  /** File names, timing and caveats, shown under a "Details" disclosure. */
+  details: string[];
   before: CaseSide;
   after: CaseSide;
   conditions: ConditionsResult;
@@ -41,7 +44,7 @@ function side(p: DemoPhoto, note: string): CaseSide {
   return { id: p.id, image: p.image, caption: `${p.id} · ${note}` };
 }
 
-function makeCase(slug: string, title: string, summary: string, beforeId: string, afterId: string, beforeNote: string, afterNote: string): DemoCase {
+function makeCase(slug: string, title: string, summary: string, details: string[], beforeId: string, afterId: string, beforeNote: string, afterNote: string): DemoCase {
   const b = photo(beforeId);
   const a = photo(afterId);
   const conditions = compareConditions(b.capture, a.capture);
@@ -49,6 +52,7 @@ function makeCase(slug: string, title: string, summary: string, beforeId: string
     slug,
     title,
     summary,
+    details,
     before: side(b, beforeNote),
     after: side(a, afterNote),
     conditions,
@@ -64,7 +68,8 @@ function identicalCase(): DemoCase {
   return {
     slug: "same-file",
     title: "Same file sent twice",
-    summary: "IMG_1406 was submitted to the API a second time. The scores came back identical, so the API itself adds no jitter. The noise comes from the photo.",
+    summary: "The same file sent to the API twice came back with identical scores, so the jitter comes from the photo, not the API.",
+    details: ["IMG_1406 (desk spot, session 1) was submitted a second time on the same day."],
     before: side(p, "first submission"),
     after: side(p, "second submission"),
     conditions,
@@ -87,12 +92,13 @@ function simulatedCase(): DemoCase {
   return {
     slug: "real-change",
     title: "Virtual foundation (positive control)",
-    summary:
-      `Before is an untouched desk-spot selfie, resized to the 1440 x 1920 file sent to YouCam virtual foundation. After is the try-on output. ` +
-      `The product is ${CLAIM_POLICY[product].label.toLowerCase()}, which is makeup. Radiance moved past the noise floor, so it is allowed as an appearance claim: how the skin looks with foundation on. ` +
-      `Moisture moved too, but a moisture claim needs a moisture product, so it is blocked by claim type. ` +
-      `The after photo differs in more than the face: the try-on also brightened the background (luma ${bg(base.capture.borderLum)} to ${bg(sim.capture.borderLum)}), and the output went from PNG to JPEG while the before did not. ` +
-      `The skin was not treated, so this simulates a product effect.`,
+    summary: "YouCam virtual foundation on an untouched selfie: radiance passes as an appearance claim, and moisture is blocked because foundation is makeup.",
+    details: [
+      `Before is IMG_1407 resized to the 1440 x 1920 file sent to YouCam virtual foundation. After is the try-on output.`,
+      `Radiance moved past the noise floor, so it is allowed as an appearance claim: how the skin looks with ${CLAIM_POLICY[product].label.toLowerCase()} on. A moisture claim needs a moisture product, so moisture is blocked by claim type.`,
+      `The after photo differs in more than the face: the try-on also brightened the background (luma ${bg(base.capture.borderLum)} to ${bg(sim.capture.borderLum)}), and the output went from PNG to JPEG while the before did not.`,
+      `The skin was not treated, so this simulates a product effect. See docs/positive-control-2026-10-13.md.`,
+    ],
     before: { id: base.id, image: base.image, caption: `${base.id} · untouched, resized like the try-on input` },
     after: { id: sim.id, image: sim.image, caption: `${sim.id} · YouCam virtual foundation output, PNG converted to JPEG (simulated product effect)` },
     conditions,
@@ -113,7 +119,21 @@ export function heldOutRep(setup: string): DemoPhoto {
 function lampOnlyCase(): DemoCase | null {
   const l = demoData.lampOnly;
   if (!l) return null;
-  return makeCase("same-room-lamp", l.title, l.summary, l.beforeId, l.afterId, l.beforeNote, l.afterNote);
+  return makeCase(
+    "same-room-lamp",
+    l.title,
+    "Same face, same room, no skincare: the ceiling light was swapped for a desk lamp and the phone was re-positioned, and the moisture and wrinkle scores rose.",
+    [
+      `Photos ${l.beforeId} (${l.beforeNote}) and ${l.afterId} (${l.afterNote}), taken on the same evening.`,
+      "In the lamp photos the phone sits lower and tilts up, so the ceiling is in frame and the face is smaller. This is not a lamp-only change.",
+      "The desk-lamp photos were taken a few minutes first (IMG_1431 to 1434, then IMG_1436 to 1439). The case orders them ceiling to lamp, the direction that would show a gain.",
+      "Each held-out case uses the shot closest to its group's average scores, chosen on scores only.",
+    ],
+    l.beforeId,
+    l.afterId,
+    l.beforeNote,
+    l.afterNote,
+  );
 }
 
 /**
@@ -130,21 +150,23 @@ function moisturizerCase(): DemoCase | null {
   const evaluation = evaluate({ before: b.scores, after: a.scores, conditions, noise: noiseModel, product });
   const mean = (setup: string, m: Metric, k: "ui" | "raw") => fix(held.filter((p) => p.setup === setup).reduce((x, p) => x + p.scores[m]![k], 0) / held.filter((p) => p.setup === setup).length);
   const mo = evaluation.metrics.find((x) => x.metric === "moisture")!;
+  const radiance = evaluation.metrics.find((x) => x.metric === "radiance")!;
+  const pore = evaluation.metrics.find((x) => x.metric === "pore")!;
+  const failed = conditions.checks.filter((c) => !c.pass);
   return {
     slug: "moisturizer",
     title: "Real moisturizer, same lamp, 20 minutes",
-    summary:
-      `One person, one application of a real moisturizer (the developer's own product), photos about 20 minutes later under the same desk lamp with similar framing. ` +
-      `Across the four shots on each side, average moisture went from ui ${mean("B", "moisture", "ui")} to ${mean("C", "moisture", "ui")} (raw ${mean("B", "moisture", "raw")} to ${mean("C", "moisture", "raw")}). ` +
-      `In this pair raw moisture moved ${fmtSigned(mo.deltaRaw)}, inside the ±${mo.mdc95.toFixed(1)} floor, so there is no moisture result to show even before the capture check. ` +
-      `Pore rose and radiance fell. This policy does not let a moisturizer claim pore. ` +
-      (conditions.match
-        ? ""
-        : `The capture check also blocked the pair although the lamp was the same: ${conditions.checks
-            .filter((c) => !c.pass)
-            .map((c) => `${c.label.toLowerCase()} changed by ${(Math.abs(c.delta) * 100).toFixed(1)}% (limit ${(c.threshold * 100).toFixed(0)}%)`)
-            .join(" and ")}. `) +
-      `This says nothing about what the product does over weeks.`,
+    summary: `A real moisturizer under the same desk lamp: moisture moved ${fmtSigned(mo.deltaRaw)}, inside the noise floor, so there is no moisture badge.`,
+    details: [
+      `One person, one application of the developer's own moisturizer. Before is ${b.id}, after is ${a.id}, about 20 minutes later, similar framing.`,
+      `Across the four shots on each side, average moisture went from ui ${mean("B", "moisture", "ui")} to ${mean("C", "moisture", "ui")} (raw ${mean("B", "moisture", "raw")} to ${mean("C", "moisture", "raw")}).`,
+      `Pore rose (raw ${fmtSigned(pore.deltaRaw)}), but this policy does not let a moisturizer claim pore.`,
+      `Radiance fell (raw ${fmtSigned(radiance.deltaRaw)}, past the ±${radiance.mdc95.toFixed(1)} floor). Claim Guard confirms the drop is larger than retake noise; an app would show it as a drop, not a gain.`,
+      conditions.match
+        ? "The capture check passes: same lamp, background colour and face-to-background brightness within the limits."
+        : `The capture check blocked the pair although the lamp was the same: ${failed.map((c) => `${c.label.toLowerCase()} changed by ${(Math.abs(c.delta) * 100).toFixed(1)}%`).join(" and ")}.`,
+      "This is one application after 20 minutes on one person. It says nothing about what the product does over weeks.",
+    ],
     before: side(b, "desk lamp, before washing and moisturizer"),
     after: side(a, "same lamp, about 20 minutes after moisturizer"),
     conditions,
@@ -161,7 +183,8 @@ export const demoCases: DemoCase[] = [
   makeCase(
     "same-light",
     "Same light, nothing changed",
-    "Two selfies taken minutes apart at the desk spot under the same light. No skincare in between. The app would still show a moisture gain.",
+    "Two selfies minutes apart at the same spot and light, with no skincare in between, and the app would still show a moisture gain.",
+    ["IMG_1409 then IMG_1406, desk spot, session 1. Every score change is inside the noise of a retake."],
     "IMG_1409",
     "IMG_1406",
     "desk spot, first shot",
@@ -170,7 +193,8 @@ export const demoCases: DemoCase[] = [
   makeCase(
     "room-window",
     "Different room and light: ceiling light to window",
-    "Same face, same day, but a different room, framing and light. The before photo is under a ceiling light (wardrobe and air conditioner behind), the after photo is in front of a bright window. The API reports a large moisture gain.",
+    "A ceiling light in one room against a bright window in another: the API reports a large moisture gain.",
+    ["IMG_1374 is under a ceiling light (wardrobe and air conditioner behind). IMG_1399 is in front of a bright window. Same face, same day, different room, framing and light."],
     "IMG_1374",
     "IMG_1399",
     "ceiling light",
@@ -179,7 +203,8 @@ export const demoCases: DemoCase[] = [
   makeCase(
     "room-desk",
     "Different room and light: ceiling light to desk spot",
-    "Same face, same day, different room and light, no backlight. The raw moisture jump is larger than the noise floor, so a noise check alone would approve it. The capture check catches the different light.",
+    "Different room and light, no backlight: the raw moisture jump passes the noise floor, and only the capture check catches the change of light.",
+    ["IMG_1373 (ceiling light, session 3) and IMG_1406 (desk spot, session 1). Same face, same day."],
     "IMG_1373",
     "IMG_1406",
     "ceiling light",

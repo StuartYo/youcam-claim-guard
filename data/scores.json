@@ -11,7 +11,8 @@
     "borderLum": 213.8,
     "backlightRatio": 0.516,
     "clippedBorder": 0,
-    "redBlue": 1.606
+    "redBlue": 1.606,
+    "bgRedBlue": 1.16
    },
    "scores": {
     "pore": {
@@ -44,7 +45,8 @@
     "borderLum": 213.3,
     "backlightRatio": 0.514,
     "clippedBorder": 0,
-    "redBlue": 1.601
+    "redBlue": 1.601,
+    "bgRedBlue": 1.16
    },
    "scores": {
     "pore": {
@@ -77,7 +79,8 @@
     "borderLum": 210.7,
     "backlightRatio": 0.49,
     "clippedBorder": 0.001,
-    "redBlue": 1.604
+    "redBlue": 1.604,
+    "bgRedBlue": 1.153
    },
    "scores": {
     "pore": {
@@ -110,7 +113,8 @@
     "borderLum": 212,
     "backlightRatio": 0.494,
     "clippedBorder": 0,
-    "redBlue": 1.6
+    "redBlue": 1.6,
+    "bgRedBlue": 1.151
    },
    "scores": {
     "pore": {
@@ -143,7 +147,8 @@
     "borderLum": 210.3,
     "backlightRatio": 0.488,
     "clippedBorder": 0.002,
-    "redBlue": 1.608
+    "redBlue": 1.608,
+    "bgRedBlue": 1.151
    },
    "scores": {
     "pore": {
@@ -176,7 +181,8 @@
     "borderLum": 212.6,
     "backlightRatio": 0.495,
     "clippedBorder": 0.001,
-    "redBlue": 1.596
+    "redBlue": 1.596,
+    "bgRedBlue": 1.149
    },
    "scores": {
     "pore": {
@@ -209,7 +215,8 @@
     "borderLum": 210.8,
     "backlightRatio": 0.44,
     "clippedBorder": 0.561,
-    "redBlue": 1.515
+    "redBlue": 1.515,
+    "bgRedBlue": 1.115
    },
    "scores": {
     "pore": {
@@ -242,7 +249,8 @@
     "borderLum": 217.9,
     "backlightRatio": 0.447,
     "clippedBorder": 0.623,
-    "redBlue": 1.522
+    "redBlue": 1.522,
+    "bgRedBlue": 1.104
    },
    "scores": {
     "pore": {
@@ -275,7 +283,8 @@
     "borderLum": 220.3,
     "backlightRatio": 0.43,
     "clippedBorder": 0.64,
-    "redBlue": 1.514
+    "redBlue": 1.514,
+    "bgRedBlue": 1.104
    },
    "scores": {
     "pore": {
@@ -308,7 +317,8 @@
     "borderLum": 219.9,
     "backlightRatio": 0.438,
     "clippedBorder": 0.636,
-    "redBlue": 1.527
+    "redBlue": 1.527,
+    "bgRedBlue": 1.104
    },
    "scores": {
     "pore": {
@@ -341,7 +351,8 @@
     "borderLum": 219.8,
     "backlightRatio": 0.437,
     "clippedBorder": 0.632,
-    "redBlue": 1.515
+    "redBlue": 1.515,
+    "bgRedBlue": 1.113
    },
    "scores": {
     "pore": {
@@ -374,7 +385,8 @@
     "borderLum": 143.9,
     "backlightRatio": 0.843,
     "clippedBorder": 0,
-    "redBlue": 1.474
+    "redBlue": 1.474,
+    "bgRedBlue": 1.099
    },
    "scores": {
     "pore": {
@@ -407,7 +419,8 @@
     "borderLum": 142.2,
     "backlightRatio": 0.852,
     "clippedBorder": 0,
-    "redBlue": 1.466
+    "redBlue": 1.466,
+    "bgRedBlue": 1.098
    },
    "scores": {
     "pore": {
@@ -440,7 +453,8 @@
     "borderLum": 141.8,
     "backlightRatio": 0.834,
     "clippedBorder": 0,
-    "redBlue": 1.461
+    "redBlue": 1.461,
+    "bgRedBlue": 1.097
    },
    "scores": {
     "pore": {
@@ -473,7 +487,8 @@
     "borderLum": 141.5,
     "backlightRatio": 0.825,
     "clippedBorder": 0,
-    "redBlue": 1.458
+    "redBlue": 1.458,
+    "bgRedBlue": 1.097
    },
    "scores": {
     "pore": {
@@ -534,7 +549,8 @@
     "borderLum": 213.1,
     "backlightRatio": 0.514,
     "clippedBorder": 0,
-    "redBlue": 1.602
+    "redBlue": 1.602,
+    "bgRedBlue": 1.16
    },
    "scores": {
     "pore": {
@@ -570,7 +586,8 @@
     "borderLum": 224.2,
     "backlightRatio": 0.53,
     "clippedBorder": 0.059,
-    "redBlue": 1.619
+    "redBlue": 1.619,
+    "bgRedBlue": 1.146
    },
    "scores": {
     "radiance": {
@@ -606,7 +623,8 @@
     "borderLum": 212.4,
     "backlightRatio": 0.539,
     "clippedBorder": 0,
-    "redBlue": 1.533
+    "redBlue": 1.533,
+    "bgRedBlue": 1.063
    },
    "scores": {
     "pore": {
@@ -640,7 +658,8 @@
     "borderLum": 211.3,
     "backlightRatio": 0.57,
     "clippedBorder": 0,
-    "redBlue": 1.511
+    "redBlue": 1.511,
+    "bgRedBlue": 1.061
    },
    "scores": {
     "pore": {
@@ -674,7 +693,8 @@
     "borderLum": 212,
     "backlightRatio": 0.544,
     "clippedBorder": 0,
-    "redBlue": 1.529
+    "redBlue": 1.529,
+    "bgRedBlue": 1.063
    },
    "scores": {
     "pore": {
@@ -708,7 +728,8 @@
     "borderLum": 212.4,
     "backlightRatio": 0.552,
     "clippedBorder": 0,
-    "redBlue": 1.527
+    "redBlue": 1.527,
+    "bgRedBlue": 1.062
    },
    "scores": {
     "pore": {
@@ -742,7 +763,8 @@
     "borderLum": 208,
     "backlightRatio": 0.414,
     "clippedBorder": 0.048,
-    "redBlue": 1.604
+    "redBlue": 1.604,
+    "bgRedBlue": 1.139
    },
    "scores": {
     "pore": {
@@ -776,7 +798,8 @@
     "borderLum": 208.6,
     "backlightRatio": 0.438,
     "clippedBorder": 0.053,
-    "redBlue": 1.598
+    "redBlue": 1.598,
+    "bgRedBlue": 1.139
    },
    "scores": {
     "pore": {
@@ -810,7 +833,8 @@
     "borderLum": 209.4,
     "backlightRatio": 0.469,
     "clippedBorder": 0.061,
-    "redBlue": 1.594
+    "redBlue": 1.594,
+    "bgRedBlue": 1.139
    },
    "scores": {
     "pore": {
@@ -844,7 +868,8 @@
     "borderLum": 209.8,
     "backlightRatio": 0.475,
     "clippedBorder": 0.05,
-    "redBlue": 1.598
+    "redBlue": 1.598,
+    "bgRedBlue": 1.14
    },
    "scores": {
     "pore": {
@@ -878,7 +903,8 @@
     "borderLum": 208,
     "backlightRatio": 0.453,
     "clippedBorder": 0.002,
-    "redBlue": 1.658
+    "redBlue": 1.658,
+    "bgRedBlue": 1.156
    },
    "scores": {
     "pore": {
@@ -912,7 +938,8 @@
     "borderLum": 210.8,
     "backlightRatio": 0.477,
     "clippedBorder": 0,
-    "redBlue": 1.626
+    "redBlue": 1.626,
+    "bgRedBlue": 1.145
    },
    "scores": {
     "pore": {
@@ -946,7 +973,8 @@
     "borderLum": 209.9,
     "backlightRatio": 0.463,
     "clippedBorder": 0,
-    "redBlue": 1.628
+    "redBlue": 1.628,
+    "bgRedBlue": 1.144
    },
    "scores": {
     "pore": {
@@ -980,7 +1008,8 @@
     "borderLum": 209.8,
     "backlightRatio": 0.46,
     "clippedBorder": 0,
-    "redBlue": 1.63
+    "redBlue": 1.63,
+    "bgRedBlue": 1.145
    },
    "scores": {
     "pore": {

@@ -1,14 +1,16 @@
+import { AuditLog } from "@/components/AuditLog";
 import { CaseExplorer } from "@/components/CaseExplorer";
 import { LiveMode } from "@/components/LiveMode";
 import { NoiseRuler } from "@/components/NoiseRuler";
 import { PhoneMockup, type PhoneScreen } from "@/components/PhoneMockup";
 import { SiteNav } from "@/components/SiteNav";
+import { auditEntry } from "@/lib/audit";
 import { toClaimCheckResponse } from "@/lib/brand-api";
 import { CALIBRATION_COLUMNS, calibrationTable } from "@/lib/calibration";
 import { APPEARANCE_LABEL, CLAIM_POLICY, policyRows } from "@/lib/claim-policy";
 import { demoCases, demoData, getCase, HEADLINE_SLUG, noiseModel, type DemoCase } from "@/lib/demo";
-import { badgeText, METRIC_LABEL, METRICS, type Scores } from "@/lib/noise";
-import { failingText, heldOutSentence, heldOutTally, HELD_OUT_SETUPS, pctOf } from "@/lib/heldout";
+import { failingText, heldOutTally, HELD_OUT_SETUPS, pctOf, type PairCount } from "@/lib/heldout";
+import { badgeText, isGainBadge, METRIC_HINT, METRIC_LABEL, METRICS, type Scores } from "@/lib/noise";
 import { noiseGroups, noiseModelFile, pairsPastFloor } from "@/lib/noise-groups";
 import { headline, pairSentence, sameRoomHeadline } from "@/lib/summary";
 
@@ -32,7 +34,7 @@ const RULES = [
     name: "Cosmetic Hygiene and Safety Act",
     href: "https://law.moj.gov.tw/ENG/LawClass/LawAll.aspx?pcode=L0030013",
     where: "Article 10, with penalties in Article 20.",
-    text: "Labels, promotion and advertising must not be false or exaggerated. Breaking Article 10(1) carries a fine of NT$40,000 to 200,000.",
+    text: "Labels, promotion and advertising must not be false or exaggerated. Breaking Article 10(1) carries a fine of NT$40,000 to 200,000, and the fine can be imposed again for each further run of the ad.",
   },
   {
     market: "Taiwan",
@@ -43,21 +45,37 @@ const RULES = [
   },
 ];
 
-/** Public numbers about the problem. Each one was checked on the linked page. */
+/** Public numbers. Each one was checked on the linked page. */
 const FACTS = [
+  {
+    figure: "859",
+    text: "brand clients in Perfect Corp's cumulative customer base at the end of 2025, with over 982,000 digital SKUs. Each is a possible user of a claim check on top of skin analysis.",
+    source: "Perfect Corp results release, 24 February 2026",
+    href: "https://www.businesswire.com/news/home/20260224503932/en/",
+  },
   {
     figure: "10%",
     text: "of 38,995 cosmetic claims checked by 21 EU member states in 2014 and 2015 did not meet the EU claim rules: 3,730 claims.",
-    source: "European Commission report COM(2016) 580, 19 September 2016",
+    source: "European Commission report COM(2016) 580",
     href: "https://data.consilium.europa.eu/doc/document/ST-12496-2016-INIT/en/pdf",
   },
   {
-    figure: "28 people",
-    text: "and no control group were behind a poster saying an LED face mask was clinically proven to reduce wrinkles in 4 weeks. The UK advertising regulator ruled the ad misleading.",
-    source: "ASA ruling on Beauty Pie Ltd, 10 June 2026",
-    href: "https://www.asa.org.uk/rulings/beauty-pie-ltd-a25-1322854.html",
+    figure: "47%",
+    text: "fewer fine lines and wrinkles, next to before/after photos, in a skincare ad the UK advertising regulator banned in 2012: it saw no evidence for the figures or that the photos were genuine.",
+    source: "ASA ruling on Rejuvenex Direct UK Ltd, 10 October 2012",
+    href: "https://www.asa.org.uk/rulings/rejuvenex-direct-uk-ltd-a12-204197.html",
+  },
+  {
+    figure: "27 to 10",
+    text: "was the wrinkle score from a skin-imaging device quoted in a TV ad the same regulator cleared in 2016. The study used an untreated control eye and a blinded assessor, and the ad said the effect was temporary.",
+    source: "ASA ruling on The Perfect Cosmetics Company Ltd, 7 September 2016",
+    href: "https://asa.org.uk/rulings/the-perfect-cosmetics-company-ltd-a16-333552.html",
   },
 ];
+
+/** Illustrative price. Our assumption, not a quote or a Perfect Corp price. */
+const ASSUMED_PRICE_NTD = 1;
+const TAIWAN_MIN_FINE_NTD = 40_000;
 
 const KIND_TEXT = { skin: "Skin", appearance: "Appearance" } as const;
 
@@ -70,7 +88,7 @@ function HeroCard({ c }: { c: DemoCase }) {
         <p className="hero-card__title">{c.title}</p>
         <p className="demo-tag">Demo data: developer&apos;s own photos</p>
       </div>
-      <p className="hero-card__label">Moisture, change in raw score between the two photos</p>
+      <p className="hero-card__label">Moisture, change in raw score for this pair of photos</p>
       <div className="only-wide">
         <NoiseRuler deltaRaw={moisture.deltaRaw} mdc={moisture.mdc95} width={380} />
       </div>
@@ -91,7 +109,7 @@ function HeroCard({ c }: { c: DemoCase }) {
           <img src={c.after.image} alt={`After: ${c.after.caption}`} width={540} height={720} />
         </div>
         <div className="hero-card__verdict">
-          <p className="duo__label">The app would show</p>
+          <p className="duo__label">For this pair the app would show</p>
           <span className="badge badge--sm">{badgeText("moisture", moisture.deltaUiPct)}</span>
           <p className="duo__label">Claim Guard</p>
           <p className="duo__verdict">{blocked ? "Blocked: photos not comparable" : "Allowed"}</p>
@@ -106,9 +124,42 @@ const compactJson = (v: unknown) => JSON.stringify(v, null, 2).replace(/\{\n\s+(
 
 const toEntries = (s: Scores) => METRICS.map((m) => ({ type: m, ui_score: s[m]!.ui, raw_score: s[m]!.raw }));
 
+const passText = (c: PairCount) => `${c.passed}/${c.total} pass (${pctOf(c.passed, c.total)})`;
+const blockText = (c: PairCount) => `${c.total - c.passed}/${c.total} blocked (${pctOf(c.total - c.passed, c.total)})`;
+
+const SNIPPET = `import { claimCheck } from "./claim-check"; // examples/claim-check.ts
+
+const r = await claimCheck({
+  baseUrl: "https://your-claim-guard-host",
+  before: { scores: youcamBefore.output, photo: beforeJpeg },
+  after: { scores: youcamAfter.output, photo: afterJpeg },
+  productCategory: "moisturizer",
+});
+for (const m of r.metrics) {
+  if (m.badge) showBadge(m.badge, m.badge_label);
+  else logForReview(m.metric, m.verdict, m.reason);
+}`;
+
+const MCP_CONFIG = `{
+  "mcpServers": {
+    "youcam-beauty": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp-api-01.makeupar.com/mcp/beauty",
+               "--header", "Authorization:\${AUTH_HEADER}"],
+      "env": { "AUTH_HEADER": "Bearer YOUR_API_KEY" }
+    },
+    "claim-guard": {
+      "command": "node",
+      "args": ["C:/path/to/youcam-claim-guard/node_modules/tsx/dist/cli.mjs",
+               "C:/path/to/youcam-claim-guard/mcp/server.ts"]
+    }
+  }
+}`;
+
 export default function Home() {
   const h = headline(demoData);
   const hero = getCase(HEADLINE_SLUG);
+  const heroMoisture = hero.evaluation.metrics.find((m) => m.metric === "moisture")!;
   const roomDesk = getCase("room-desk");
   const real = getCase("real-change");
   const room = sameRoomHeadline(demoData);
@@ -117,9 +168,12 @@ export default function Home() {
   const floorOf = (k: "metrics" | "session1Only") => Object.fromEntries(METRICS.map((m) => [m, noiseFile[k][m].mdc95])) as Record<(typeof METRICS)[number], number>;
   const pastS1 = pairsPastFloor(heldOutGroups, floorOf("session1Only"));
   const pastPooled = pairsPastFloor(heldOutGroups, floorOf("metrics"));
-  const held = demoData.heldOut?.length ? heldOutTally(demoData.heldOut.map((p) => ({ id: p.id, setup: p.setup!, capture: p.capture }))) : null;
+  const shots = (demoData.heldOut ?? []).map((p) => ({ id: p.id, setup: p.setup!, capture: p.capture }));
+  const v1 = shots.length ? heldOutTally(shots, 1) : null;
+  const v2 = shots.length ? heldOutTally(shots, 2) : null;
   const calib = calibrationTable(demoData.photos);
   const policy = policyRows();
+  const audit = demoCases.map((c) => auditEntry(c.slug, "2026-10-13", "demo case", c.conditions, c.evaluation));
 
   const sim = demoData.simulated!.find((x) => x.id === real.after.id)!;
   const base = demoData.baselines!.find((x) => x.id === real.before.id)!;
@@ -135,13 +189,14 @@ export default function Home() {
       .filter((m) => m.metric === "moisture" || m.metric === "radiance")
       .map((m) => ({
         label: METRIC_LABEL[m.metric],
+        hint: METRIC_HINT[m.metric],
         before: m.before.ui,
         after: m.after.ui,
-        badge: m.verdict === "claimable" ? badgeText(m.metric, m.deltaUiPct) : null,
+        badge: isGainBadge(m) ? badgeText(m.metric, m.deltaUiPct) : null,
         note:
           m.verdict === "blocked-claim-type"
             ? "No claim: foundation is makeup"
-            : m.verdict === "claimable" && m.claimKind === "appearance"
+            : isGainBadge(m) && m.claimKind === "appearance"
               ? "With foundation on"
               : undefined,
       }));
@@ -193,9 +248,9 @@ export default function Home() {
             </p>
             {room ? (
               <p className="fact">
-                Same face, same room, same evening, no skincare in between. Switching from the ceiling light to a desk lamp, with the phone
-                re-positioned, raised the average moisture score from {room.moistureCeilingUi} to {room.moistureLampUi} (+{room.moisturePct}%) and
-                wrinkle from {room.wrinkleCeilingUi} to {room.wrinkleLampUi}.
+                Same face, same room, no skincare in between. Switching from the ceiling light to a desk lamp, with the phone re-positioned, raised
+                the average moisture score of four shots each from {room.moistureCeilingUi} to {room.moistureLampUi} (+{room.moisturePct}%). The pair
+                in the card is one of those pairs: moisture {badgeText("moisture", heroMoisture.deltaUiPct).replace("Moisture ", "")}.
               </p>
             ) : (
               <p className="fact">
@@ -219,8 +274,8 @@ export default function Home() {
           <div className="section__head">
             <h2>Cases</h2>
             <p>
-              Real YouCam SD skin analysis results from the developer&apos;s photos. Pick a case to see what the app would display and what Claim
-              Guard decides.
+              Real YouCam SD skin analysis results from the developer&apos;s photos: one face, one phone. All four YouCam scores are higher-is-better,
+              so a higher wrinkle score means fewer wrinkles.
             </p>
           </div>
           <CaseExplorer cases={demoCases} />
@@ -229,7 +284,7 @@ export default function Home() {
         <section id="how" className="section wrap">
           <div className="section__head">
             <h2>How it decides</h2>
-            <p>Claim Guard runs five checks in order, and the first one that applies decides what happens to each badge.</p>
+            <p>Five checks run in order, and the first one that applies decides what happens to each badge.</p>
           </div>
           <ol className="order">
             <li>
@@ -246,246 +301,256 @@ export default function Home() {
               <strong>Noise floor.</strong> The change must be bigger than what retaking the same photo produces.
             </li>
             <li>
-              <strong>Display change.</strong> The badge shows the display score, so that score must move by at least 1 point.
+              <strong>Display change.</strong> The badge shows the display score, so that score must go up by at least 1 point.
             </li>
           </ol>
+          {v2 && (
+            <p className="conclusion">
+              On the developer&apos;s first {h.photoCount} photos, all {h.pairs.changed.total} pairs with a changed setup were blocked and all{" "}
+              {h.pairs.sameSetup.total} same-light retake pairs passed; on {v2.photos} photos from a later evening,{" "}
+              {v2.differentLight.total - v2.differentLight.passed} of {v2.differentLight.total} changed-light pairs were blocked and{" "}
+              {v2.sameLightSkinChange.passed} of {v2.sameLightSkinChange.total} same-lamp pairs before and after a moisturizer passed.
+            </p>
+          )}
 
-          <details className="maths">
-            <summary>The maths behind the checks</summary>
-            <div className="maths__body">
-              <p>
-                <strong>Same file</strong> compares the SHA-256 hash of both uploads. Sending the same file to YouCam twice returned identical
-                scores, so the API adds no jitter of its own.
-              </p>
-              <p>
-                <strong>Noise floor</strong> uses <code>raw_score</code>, because <code>ui_score</code> is a compressed display scale: same-light
-                retakes move ui by about 1 point while raw shows the spread. The limit is the minimum detectable change at 95%:
-              </p>
-              <p className="formula">MDC95 = 1.96 &times; &radic;2 &times; SD</p>
-              <p>
-                Each photo carries its own retake error, so the difference of two photos has an SD of &radic;2 &times; SD. A change outside 1.96 of
-                those SDs happens by chance less than 5% of the time.
-              </p>
-            </div>
-          </details>
+          <details className="method">
+            <summary>
+              <span>Method and limits</span>
+              <small>Noise floor, capture limits, claim policy, the later-evening check and what these numbers don&apos;t show</small>
+            </summary>
+            <div className="method__body">
+              <div className="how-grid">
+                <div className="how-card">
+                  <h3>Noise floor</h3>
+                  <p>
+                    Uses <code>raw_score</code>, because <code>ui_score</code> is a compressed display scale. SD within {noiseFile.groups.length} sets
+                    of retakes, each at one spot under one light with nothing changed, pooled across the sets ({noiseFile.metrics.moisture.n} photos).
+                    Each set keeps its own average, so a light change between sets never counts as noise. MDC95 = 1.96 &times; &radic;2 &times; SD: a
+                    change beyond it happens by chance under 5% of the time.
+                  </p>
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Metric</th>
+                          <th>Pooled SD</th>
+                          <th>MDC95 (used)</th>
+                          <th>Session 1 only</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {METRICS.map((m) => (
+                          <tr key={m}>
+                            <td>{METRIC_LABEL[m]}</td>
+                            <td className="num">{noiseModel[m].sd.toFixed(2)}</td>
+                            <td className="num">&plusmn;{noiseModel[m].mdc95.toFixed(2)}</td>
+                            <td className="num">&plusmn;{noiseFile.session1Only[m].mdc95.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="small">
+                    Sets: {noiseFile.groups.map((g) => `${g.label} (${g.ids.length})`).join(", ")}. The window session is left out because every
+                    photo in it is backlit. Sending the same file twice returned identical scores, so the API adds no jitter of its own.
+                  </p>
+                </div>
 
-          <div className="how-grid">
-            <div className="how-card">
-              <h3>Noise floor</h3>
-              <p>
-                SD of raw scores within {noiseFile.groups.length} sets of retakes, each at one spot under one light with nothing changed, pooled
-                across the sets ({noiseFile.metrics.moisture.n} photos). Each set keeps its own average, so a light change between sets never counts
-                as noise.
-              </p>
-              <div className="table-scroll">
-                <table>
+                <div className="how-card">
+                  <h3>Capture conditions</h3>
+                  <p>
+                    Measured on a fixed central face box and the background strips beside the head. Face brightness is divided by background
+                    brightness, so a uniform exposure change cancels out, and light colour is read from the background, which skincare does not
+                    change. Limits sit between what same-spot retakes and a different room and light produced on the first {h.photoCount} photos.
+                  </p>
+                  <table className="stack-sm">
+                    <thead>
+                      <tr>
+                        {CALIBRATION_COLUMNS.map((c) => (
+                          <th key={c}>{c}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {calib.map((r) => (
+                        <tr key={r.id}>
+                          <td data-label={CALIBRATION_COLUMNS[0]}>
+                            {r.label}
+                            <span className="td-sub">{r.measures}</span>
+                          </td>
+                          <td className="num" data-label={CALIBRATION_COLUMNS[1]}>
+                            {r.limit}
+                          </td>
+                          <td className="num" data-label={CALIBRATION_COLUMNS[2]}>
+                            {r.sameSetup}
+                          </td>
+                          <td className="num" data-label={CALIBRATION_COLUMNS[3]}>
+                            {r.acrossSetups}
+                            {r.note && <span className="td-sub">{r.note}</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="small">
+                    No single check catches every change. {pairSentence(h.pairs)} These counts are in-sample. Run <code>npm run calibrate</code> for
+                    the full printout.
+                  </p>
+                </div>
+              </div>
+
+              <div className="how-card how-card--wide">
+                <h3>Claim type policy</h3>
+                <p>
+                  Which metrics each product category may make claims about. A configurable policy a brand&apos;s compliance team would edit, not a
+                  regulation. &ldquo;Appearance&rdquo; means the badge carries the label &ldquo;{APPEARANCE_LABEL.toLowerCase()}&rdquo;.
+                </p>
+                <table className="stack-sm policy">
                   <thead>
                     <tr>
-                      <th>Metric</th>
-                      <th>Pooled SD</th>
-                      <th>MDC95 (used)</th>
-                      <th>Session 1 only</th>
+                      <th>Category</th>
+                      {METRICS.map((m) => (
+                        <th key={m}>{METRIC_LABEL[m]}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {METRICS.map((m) => (
-                      <tr key={m}>
-                        <td>{METRIC_LABEL[m]}</td>
-                        <td className="num">{noiseModel[m].sd.toFixed(2)}</td>
-                        <td className="num">&plusmn;{noiseModel[m].mdc95.toFixed(2)}</td>
-                        <td className="num">&plusmn;{noiseFile.session1Only[m].mdc95.toFixed(2)}</td>
+                    {policy.map((r) => (
+                      <tr key={r.category}>
+                        <td data-label="Category">
+                          <code>{r.category}</code>
+                          {CLAIM_POLICY[r.category].makeup && <span className="td-sub">makeup</span>}
+                        </td>
+                        {r.metrics.map((m) => (
+                          <td key={m.metric} data-label={METRIC_LABEL[m.metric]} className={m.kind ? `kind kind--${m.kind}` : "kind kind--no"}>
+                            {m.kind ? KIND_TEXT[m.kind] : "No claim"}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="small">
-                Sets: {noiseFile.groups.map((g) => `${g.label} (${g.ids.length})`).join(", ")}. The window session is left out because every photo
-                in it is backlit and the capture check blocks those pairs anyway.
-              </p>
-            </div>
 
-            <div className="how-card">
-              <h3>Capture conditions</h3>
-              <p>
-                Measured on a fixed central face box and the background strips beside the head. There is no face detection, so a selfie needs to be
-                roughly centred. Limits sit between what same-spot retakes produced and what a different room and light produced.
-              </p>
-              <table className="stack-sm">
-                <thead>
-                  <tr>
-                    {CALIBRATION_COLUMNS.map((c) => (
-                      <th key={c}>{c}</th>
+              {v1 && v2 && (
+                <div className="how-card how-card--wide heldout">
+                  <h3>Later-evening check, before and after a design change</h3>
+                  <p>Twelve more photos of the same face from a different evening, four shots each under three setups:</p>
+                  <ul className="heldout__setups">
+                    {Object.entries(HELD_OUT_SETUPS).map(([k, v]) => (
+                      <li key={k}>
+                        <strong>{k}.</strong> {v.note}
+                      </li>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {calib.map((r) => (
-                    <tr key={r.id}>
-                      <td data-label={CALIBRATION_COLUMNS[0]}>
-                        {r.label}
-                        <span className="td-sub">{r.measures}</span>
-                      </td>
-                      <td className="num" data-label={CALIBRATION_COLUMNS[1]}>
-                        {r.limit}
-                      </td>
-                      <td className="num" data-label={CALIBRATION_COLUMNS[2]}>
-                        {r.sameSetup}
-                      </td>
-                      <td className="num" data-label={CALIBRATION_COLUMNS[3]}>
-                        {r.acrossSetups}
-                        {r.note && <span className="td-sub">{r.note}</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="small">
-                No single check catches every change. {pairSentence(h.pairs)} Run <code>npm run calibrate</code> for the full printout.
-              </p>
-            </div>
-          </div>
+                  </ul>
+                  <table className="stack-sm">
+                    <thead>
+                      <tr>
+                        <th>Pairs (ordered)</th>
+                        <th>Expected</th>
+                        <th>Version 1, limits frozen</th>
+                        <th>Version 2, current</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td data-label="Pairs">Same setup (A-A, B-B, C-C)</td>
+                        <td data-label="Expected">Pass</td>
+                        <td className="num" data-label="Version 1">
+                          {passText(v1.sameSetup)}
+                          <span className="td-sub">fails: {failingText(v1.sameSetup)}</span>
+                        </td>
+                        <td className="num" data-label="Version 2">
+                          {passText(v2.sameSetup)}
+                          <span className="td-sub">fails: {failingText(v2.sameSetup)}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td data-label="Pairs">Different light (A-B, A-C)</td>
+                        <td data-label="Expected">Blocked</td>
+                        <td className="num" data-label="Version 1">
+                          {blockText(v1.differentLight)}
+                        </td>
+                        <td className="num" data-label="Version 2">
+                          {blockText(v2.differentLight)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td data-label="Pairs">Same lamp, before and after moisturizer (B-C)</td>
+                        <td data-label="Expected">Pass</td>
+                        <td className="num" data-label="Version 1">
+                          {passText(v1.sameLightSkinChange)}
+                          <span className="td-sub">fails: {failingText(v1.sameLightSkinChange)}</span>
+                        </td>
+                        <td className="num" data-label="Version 2">
+                          {passText(v2.sameLightSkinChange)}
+                          <span className="td-sub">fails: {failingText(v2.sameLightSkinChange)}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p>
+                    <strong>Version 1</strong> was frozen on the first {h.photoCount} photos and never saw these twelve, so its column is a true
+                    held-out result. It read light colour from the face and face brightness on its own. After washing and moisturizer the face
+                    measured redder, which it read as warmer light, and it blocked most same-lamp pairs.
+                  </p>
+                  <p>
+                    <strong>Version 2</strong> reads light colour from the background and divides face brightness by background brightness. These
+                    twelve photos showed us why version 1 failed, so they informed the change and its column is not a strict held-out result. The
+                    limit values (10%, 15%, 2%) were checked on the first {h.photoCount} photos only and not tuned to make any case pass. The
+                    remaining failures are real: in set B the face got brighter from shot to shot relative to the background under the same lamp.
+                  </p>
+                  <p>
+                    The same photos made the noise floor wider. Under the session 1 floor, {pastS1.moisture.past} of {pastS1.moisture.pairs}{" "}
+                    same-setup pairs moved moisture past it and {pastS1.wrinkle.past} of {pastS1.wrinkle.pairs} moved wrinkle past it, where about 1
+                    in 20 is expected. With the pooled floor, {pastPooled.moisture.past}, {pastPooled.pore.past}, {pastPooled.wrinkle.past} and{" "}
+                    {pastPooled.radiance.past} of {pastPooled.moisture.pairs} still do, for moisture, pore, wrinkle and radiance. That count is
+                    in-sample, and the floor may still be too tight.
+                  </p>
+                </div>
+              )}
 
-          <div className="how-card how-card--wide">
-            <h3>Claim type policy</h3>
-            <p>
-              Which metrics each product category may make claims about. This is a configurable policy a brand&apos;s compliance team would edit,
-              not a regulation. &ldquo;Appearance&rdquo; means the badge carries the label &ldquo;{APPEARANCE_LABEL.toLowerCase()}&rdquo;.
-            </p>
-            <table className="stack-sm policy">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  {METRICS.map((m) => (
-                    <th key={m}>{METRIC_LABEL[m]}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {policy.map((r) => (
-                  <tr key={r.category}>
-                    <td data-label="Category">
-                      <code>{r.category}</code>
-                      {CLAIM_POLICY[r.category].makeup && <span className="td-sub">makeup</span>}
-                    </td>
-                    {r.metrics.map((m) => (
-                      <td key={m.metric} data-label={METRIC_LABEL[m.metric]} className={m.kind ? `kind kind--${m.kind}` : "kind kind--no"}>
-                        {m.kind ? KIND_TEXT[m.kind] : "No claim"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="honesty">
-            <h3>What these numbers do and don&apos;t show</h3>
-            <p>
-              The four capture limits were set on the first {h.photoCount} photos: one face, one phone, one day. The pass and block counts above
-              are in-sample. They show the limits separate those photos. They are not an accuracy figure.
-            </p>
-            {held ? (
-              <div className="heldout">
-                <h4>Held-out check</h4>
+              <div className="honesty">
+                <h3>What these numbers don&apos;t show</h3>
                 <p>
-                  Twelve more photos of the same face, taken on a different evening and not used to set the limits, which were not changed
-                  afterwards. Four shots each under three setups:
-                </p>
-                <ul className="heldout__setups">
-                  {Object.entries(HELD_OUT_SETUPS).map(([k, v]) => (
-                    <li key={k}>
-                      <strong>{k}.</strong> {v.note}
-                    </li>
-                  ))}
-                </ul>
-                <table className="stack-sm">
-                  <thead>
-                    <tr>
-                      <th>Pairs</th>
-                      <th>Expected</th>
-                      <th>Result</th>
-                      <th>Failed checks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td data-label="Pairs">Same setup (A-A, B-B, C-C)</td>
-                      <td data-label="Expected">Pass</td>
-                      <td className="num" data-label="Result">
-                        {held.sameSetup.passed}/{held.sameSetup.total} pass ({pctOf(held.sameSetup.passed, held.sameSetup.total)})
-                      </td>
-                      <td data-label="Failed checks">{failingText(held.sameSetup)}</td>
-                    </tr>
-                    <tr>
-                      <td data-label="Pairs">Different light (A-B, A-C)</td>
-                      <td data-label="Expected">Blocked</td>
-                      <td className="num" data-label="Result">
-                        {held.differentLight.total - held.differentLight.passed}/{held.differentLight.total} blocked (
-                        {pctOf(held.differentLight.total - held.differentLight.passed, held.differentLight.total)})
-                      </td>
-                      <td data-label="Failed checks">{failingText(held.differentLight)}</td>
-                    </tr>
-                    <tr>
-                      <td data-label="Pairs">Same lamp, before and after moisturizer (B-C)</td>
-                      <td data-label="Expected">Pass</td>
-                      <td className="num" data-label="Result">
-                        {held.sameLightSkinChange.passed}/{held.sameLightSkinChange.total} pass (
-                        {pctOf(held.sameLightSkinChange.passed, held.sameLightSkinChange.total)})
-                      </td>
-                      <td data-label="Failed checks">{failingText(held.sameLightSkinChange)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <p className="small">Ordered pairs; the failed-checks column counts pairs per check. {heldOutSentence(held)}</p>
-                <p>
-                  What this shows: the check blocked every pair where the light changed. It also blocked pairs it should have passed. In set B the
-                  face got brighter from shot to shot under the same lamp. Between B and C the lamp was the same, but the face measured redder after
-                  washing and moisturizer, and the light colour check reads that as warmer light: from pixels alone it cannot tell skin colour from
-                  light colour. For a user this means more &ldquo;retake in the same light&rdquo; prompts than needed, not a wrong badge.
-                </p>
-                <p>
-                  The held-out retakes were also noisier than session 1. Under the old floor from session 1 alone, {pastS1.moisture.past} of{" "}
-                  {pastS1.moisture.pairs} same-setup held-out pairs moved moisture past it and {pastS1.wrinkle.past} of {pastS1.wrinkle.pairs} moved
-                  wrinkle past it, where about 1 in 20 is expected. So the floor is now pooled across all five sets of retakes (table above). With the
-                  pooled floor, {pastPooled.moisture.past}, {pastPooled.pore.past}, {pastPooled.wrinkle.past} and {pastPooled.radiance.past} of{" "}
-                  {pastPooled.moisture.pairs} pairs still move past it for moisture, pore, wrinkle and radiance. Those photos helped set the pooled
-                  floor, so that count is in-sample, and the floor may still be too tight.
+                  Everything here comes from one face and one phone. The face box is fixed: an offline face detector found one face in each of the
+                  17 demo images and the box sat inside it left to right, but its top edge reaches the forehead and, in the window photos, the
+                  hairline. We kept the fixed box because the detector would add about 300 MB of dependencies and change every stored measurement.
+                  A brand would recalibrate with retakes from its own users and devices before relying on these limits.
                 </p>
               </div>
-            ) : (
-              <p>
-                <strong>Held-out check: pending (new photos).</strong> <code>npm run calibrate</code> reads a second set from{" "}
-                <code>photos/session4/</code> and reports its pass and block rates separately.
-              </p>
-            )}
-            <p>
-              The face box is fixed. We ran an offline face detector over all 17 demo images: it found one face in each, and the box sat inside it
-              left to right, but its top edge reaches the forehead and, in the window photos, the hairline. We kept the fixed box because the
-              detector would add about 300 MB of dependencies and change every stored measurement.
-            </p>
-            <p>A brand would recalibrate with retakes from its own users and devices before relying on these limits.</p>
-          </div>
+            </div>
+          </details>
         </section>
 
         <section id="live" className="section wrap">
           <div className="section__head">
             <h2>Try your own photos</h2>
             <p>
-              Upload a before and an after photo. The capture check runs first and costs nothing. Skin analysis runs only after you agree, and it
-              uses real YouCam credits, so there is a daily limit.
+              The capture check runs first and costs nothing. Skin analysis runs only after you agree, and it uses real YouCam credits, so this demo
+              has a daily cap.
             </p>
           </div>
           <LiveMode />
         </section>
 
-        <section id="why" className="section wrap">
+        <section id="audit" className="section wrap">
           <div className="section__head">
+            <h2>Audit log</h2>
+            <p>
+              Every claim check with its time, product, per-metric verdict, reason and the limits used, for a compliance team to review or export.
+              The demo cases are listed; sample and live checks you run here are added on top. Rows stay in this browser tab.
+            </p>
+          </div>
+          <AuditLog initial={audit} />
+        </section>
+
+        <section id="why" className="section wrap">
+          <div className="section__head section__head--top">
             <h2>Why brands need this</h2>
             <p>
-              A before/after skin score in a brand&apos;s app is a claim about its product, and regulators already ask for evidence behind such
-              claims. A change that a different room can produce is weak evidence. Claim Guard gives compliance and marketing review teams a logged
-              reason for every badge shown or blocked, and gives Perfect Corp a trust feature to offer brand clients on top of skin analysis.
+              A before/after skin score in a brand&apos;s app is a claim about its product, and regulators ask for evidence behind it. Claim Guard
+              logs a reason for every badge it shows or blocks.
             </p>
           </div>
           <div className="facts">
@@ -498,6 +563,37 @@ export default function Home() {
                 </a>
               </article>
             ))}
+          </div>
+          <div className="business">
+            <h3>What a check costs against what a claim can cost</h3>
+            <ul>
+              <li>
+                <strong>Assumed price: NT${ASSUMED_PRICE_NTD} per check.</strong> This is our assumption for illustration, not a quote and not a
+                Perfect Corp price.
+              </li>
+              <li>
+                <strong>Taiwan:</strong> a false or exaggerated cosmetic claim costs NT${TAIWAN_MIN_FINE_NTD.toLocaleString("en-US")} to 200,000
+                (Cosmetic Hygiene and Safety Act, Article 20), and the fine can repeat for each further run of the ad. The minimum fine pays for{" "}
+                {(TAIWAN_MIN_FINE_NTD / ASSUMED_PRICE_NTD).toLocaleString("en-US")} checks at the assumed price.
+              </li>
+              <li>
+                <strong>UK:</strong> since April 2025 the Competition and Markets Authority can fine a business up to 10% of global turnover for
+                breaking consumer law (
+                <a
+                  href="https://www.gov.uk/government/news/cma-to-boost-consumer-and-business-confidence-as-new-consumer-protection-regime-comes-into-force"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  gov.uk, 7 April 2025
+                </a>
+                ).
+              </li>
+              <li>
+                <strong>Scale:</strong> if each of Perfect Corp&apos;s 859 brand clients ran 1,000 checks a month at the assumed price, that is NT$
+                {(859 * 1000 * ASSUMED_PRICE_NTD).toLocaleString("en-US")} a month of add-on revenue on top of skin analysis. The volume and the price are
+                our assumptions; only the client count is reported.
+              </li>
+            </ul>
           </div>
           <div className="rules">
             {RULES.map((r) => (
@@ -515,7 +611,8 @@ export default function Home() {
           </div>
           <p className="caveat">
             Claim Guard does not make a claim compliant. It catches common ways a before/after number misleads: photos taken under different light,
-            retake noise read as a result, and a product claiming a change it can&apos;t cause. Sources are the official texts linked above.
+            retake noise read as a result, and a product claiming a change it can&apos;t cause. We found no public enforcement case about a
+            skin-analysis app itself; the cases above are about skincare ads.
           </p>
         </section>
 
@@ -541,65 +638,65 @@ export default function Home() {
                 </li>
               </ol>
               <div className="verdict-map">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Verdict</th>
-                    <th>Meaning</th>
-                    <th>Suggested app copy</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>
-                      <span className="tag tag--claimable">claimable</span>
-                    </td>
-                    <td>Raw change past the noise floor, display score moved, same light, product may claim it.</td>
-                    <td>Show the badge, e.g. &ldquo;Radiance +11%&rdquo;, plus the appearance label for makeup.</td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span className="tag tag--blocked-claim-type">blocked-claim-type</span>
-                    </td>
-                    <td>The product category can&apos;t make this claim.</td>
-                    <td>No badge for this metric.</td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span className="tag tag--blocked-conditions">blocked-conditions</span>
-                    </td>
-                    <td>The two photos were taken under different light.</td>
-                    <td>&ldquo;Retake in the same light to see your progress.&rdquo;</td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span className="tag tag--within-noise">within-noise</span>
-                    </td>
-                    <td>The change is no bigger than retaking the photo.</td>
-                    <td>&ldquo;No clear change yet. Check again next week.&rdquo;</td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <span className="tag tag--no-visible-change">no-visible-change</span>
-                    </td>
-                    <td>Raw moved, but the display score did not.</td>
-                    <td>No badge for this metric.</td>
-                  </tr>
-                </tbody>
-              </table>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Verdict</th>
+                      <th>Meaning</th>
+                      <th>Suggested app copy</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <span className="tag tag--claimable">claimable</span>
+                      </td>
+                      <td>Raw change past the noise floor, display score moved, same light, product may claim it. A drop is real but gets no badge.</td>
+                      <td>Show the badge, e.g. &ldquo;Radiance +11%&rdquo;, plus the appearance label for makeup.</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span className="tag tag--blocked-claim-type">blocked-claim-type</span>
+                      </td>
+                      <td>The product category can&apos;t make this claim.</td>
+                      <td>No badge for this metric.</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span className="tag tag--blocked-conditions">blocked-conditions</span>
+                      </td>
+                      <td>The two photos were taken under different light.</td>
+                      <td>&ldquo;Retake in the same light to see your progress.&rdquo;</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span className="tag tag--within-noise">within-noise</span>
+                      </td>
+                      <td>The change is no bigger than retaking the photo.</td>
+                      <td>&ldquo;No clear change yet. Check again next week.&rdquo;</td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <span className="tag tag--no-visible-change">no-visible-change</span>
+                      </td>
+                      <td>Raw moved, but the display score did not.</td>
+                      <td>No badge for this metric.</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
           <div className="code-grid">
             <div className="code">
               <p className="code__title">Request</p>
-              <pre>
+              <pre className="json-box">
                 <code>{`POST /api/v1/claim-check\nContent-Type: application/json\n\n${compactJson(request)}`}</code>
               </pre>
             </div>
-            <div className="code">
+            <div className="code code--fade">
               <p className="code__title">Response (the virtual foundation case)</p>
-              <pre>
+              <pre className="json-box">
                 <code>{JSON.stringify(response, null, 2)}</code>
               </pre>
             </div>
@@ -608,6 +705,26 @@ export default function Home() {
             Accepts YouCam&apos;s <code>output</code> entries as returned, or a <code>{`{ "moisture": { "ui": 74, "raw": 59.9 } }`}</code> map.{" "}
             <code>product_category</code> is optional; without it the claim-type check is skipped. Photos up to 4 MB each, JPEG or PNG; 30 requests
             per minute per address.
+          </p>
+
+          <div className="code-grid code-grid--tools">
+            <div className="code">
+              <p className="code__title">In your backend: examples/claim-check.ts</p>
+              <pre className="json-box">
+                <code>{SNIPPET}</code>
+              </pre>
+            </div>
+            <div className="code">
+              <p className="code__title">In Claude Desktop, next to YouCam&apos;s MCP server</p>
+              <pre className="json-box">
+                <code>{MCP_CONFIG}</code>
+              </pre>
+            </div>
+          </div>
+          <p className="small">
+            <code>npm run mcp</code> starts a local MCP server with two tools: <code>claim_check</code> (scores plus two photo paths or base64, and
+            an optional product category) and <code>explain_thresholds</code>. An assistant can run YouCam&apos;s skin analysis through
+            YouCam&apos;s own MCP server, then check the claim with Claim Guard before writing a badge.
           </p>
         </section>
       </main>

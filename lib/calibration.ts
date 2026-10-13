@@ -39,16 +39,13 @@ export function calibrationTable(all: DemoPhoto[]): CalibrationRow[] {
     const v = set.map(([a, b]) => f(a, b));
     return `${fmt(Math.min(...v))} to ${fmt(Math.max(...v))}`;
   };
-  const lum: F = (a, b) => Math.abs(b.centerLum - a.centerLum) / a.centerLum;
-  const ratio: F = (a, b) => Math.abs(b.backlightRatio - a.backlightRatio);
+  const lum: F = (a, b) => Math.abs(b.backlightRatio - a.backlightRatio) / a.backlightRatio;
   const clip: F = (a, b) => Math.max(a.clippedBorder, b.clippedBorder);
-  const rb: F = (a, b) => Math.abs(b.redBlue - a.redBlue) / a.redBlue;
-  const r3 = (v: number) => v.toFixed(3);
+  const rb: F = (a, b) => Math.abs(b.bgRedBlue - a.bgRedBlue) / a.bgRedBlue;
   return [
-    { id: "face-brightness", label: "Face brightness", measures: "Mean brightness of the central face region", limit: `±${pct(THRESHOLDS.faceLumRelative)}`, sameSetup: pct(sameMax(lum)), acrossSetups: range(lum, pct) },
-    { id: "backlight-ratio", label: "Face vs background", measures: "Face brightness divided by the background beside the head", limit: `±${THRESHOLDS.backlightRatioDelta.toFixed(2)}`, sameSetup: r3(sameMax(ratio)), acrossSetups: range(ratio, r3) },
+    { id: "face-brightness", label: "Face brightness", measures: "Face brightness divided by the background beside the head, so exposure changes cancel out", limit: `±${pct(THRESHOLDS.faceLumRelative)}`, sameSetup: pct(sameMax(lum)), acrossSetups: range(lum, pct) },
     { id: "backlit", label: "Backlight", measures: "Share of blown-out pixels in the background beside the head", limit: `${pct(THRESHOLDS.clippedBorder)} max`, sameSetup: pct(sameMax(clip)), acrossSetups: range(clip, pct), note: `${range(clip, pct, windowBehind)} when one photo has the window behind the head` },
-    { id: "color-temperature", label: "Light colour", measures: "Red-to-blue ratio of the face region", limit: `±${pct(THRESHOLDS.redBlueRelative)}`, sameSetup: pct(sameMax(rb)), acrossSetups: range(rb, pct) },
+    { id: "color-temperature", label: "Light colour", measures: "Red-to-blue ratio of the background beside the head (skincare does not change it)", limit: `±${pct(THRESHOLDS.redBlueRelative)}`, sameSetup: pct(sameMax(rb)), acrossSetups: range(rb, pct) },
   ];
 }
 

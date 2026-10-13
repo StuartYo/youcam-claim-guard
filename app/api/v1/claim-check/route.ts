@@ -1,10 +1,6 @@
-import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { MAX_BODY_BYTES, parseClaimCheckRequest, RequestError, toClaimCheckResponse } from "@/lib/brand-api";
-import { compareConditions } from "@/lib/conditions";
-import { noiseModel } from "@/lib/demo";
-import { measure } from "@/lib/measure";
-import { evaluate } from "@/lib/noise";
+import { MAX_BODY_BYTES, parseClaimCheckRequest, RequestError } from "@/lib/brand-api";
+import { claimCheck } from "@/lib/claim-check";
 import { clientIp } from "@/lib/server/image";
 import { BodyTooLarge, limiter, readBodyLimited, tooMany } from "@/lib/server/limits";
 
@@ -34,11 +30,7 @@ export async function POST(req: Request) {
   }
   try {
     const r = parseClaimCheckRequest(body);
-    const [bs, as] = await Promise.all([measure(r.beforeImage), measure(r.afterImage)]);
-    const conditions = compareConditions(bs, as);
-    const identical = createHash("sha256").update(r.beforeImage).digest("hex") === createHash("sha256").update(r.afterImage).digest("hex");
-    const ev = evaluate({ before: r.before, after: r.after, conditions, noise: noiseModel, identical, product: r.product });
-    return NextResponse.json(toClaimCheckResponse(conditions, ev));
+    return NextResponse.json(await claimCheck({ before: r.before, after: r.after, beforeImage: r.beforeImage, afterImage: r.afterImage, product: r.product }));
   } catch (e) {
     if (e instanceof RequestError) return NextResponse.json({ error: e.message }, { status: 400 });
     return NextResponse.json({ error: "The photos could not be read. Send JPEG or PNG under 4 MB each." }, { status: 400 });

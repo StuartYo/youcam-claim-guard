@@ -9,7 +9,7 @@ import { noiseGroups, noiseModelFile, pairsPastFloor } from "../lib/noise-groups
 const data = scores as unknown as DemoData;
 const noise = noiseJson.metrics as NoiseModel;
 const p = (id: string) => data.photos.find((x) => x.id === id)!;
-const sameLight: CaptureStats = { centerLum: 105, borderLum: 212, backlightRatio: 0.5, clippedBorder: 0, redBlue: 1.6 };
+const sameLight: CaptureStats = { centerLum: 105, borderLum: 212, backlightRatio: 0.5, clippedBorder: 0, redBlue: 1.6, bgRedBlue: 1.15 };
 const match = compareConditions(sameLight, sameLight);
 
 describe("noise model", () => {

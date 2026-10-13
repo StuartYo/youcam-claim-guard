@@ -33,6 +33,16 @@ export function CaseExplorer({ cases }: { cases: DemoCase[] }) {
       </div>
       <div className="explorer__body" role="tabpanel">
         <p className="case-summary">{current.summary}</p>
+        {current.details.length > 0 && (
+          <details className="case-details">
+            <summary>Details</summary>
+            <ul>
+              {current.details.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+          </details>
+        )}
         <ResultPanel before={current.before} after={current.after} conditions={current.conditions} evaluation={current.evaluation} />
       </div>
     </div>

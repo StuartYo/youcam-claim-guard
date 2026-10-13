@@ -36,14 +36,15 @@ Before is the resized untouched file from step 4. After is the VTO output from s
 | Wrinkle | 97 / 98.73 | 97 / 99.09 | +0.36 | 0.17 | 0 | no visible change |
 | Radiance | 82 / 83.09 | 91 / 94.54 | +11.45 | 3.38 | +9 | claimable |
 
-Capture check: all four pass.
+Capture check (version 2, current): all three pass.
 
 | Check | Before | After | Limit |
 |---|---|---|---|
-| Face brightness | 109.6 | 118.9 (+8.5%) | 10% |
-| Face vs background | 0.514 | 0.530 | ±0.10 |
+| Face brightness relative to background | 0.514 | 0.530 (+3.1%) | ±10% |
 | Backlight | 0% | 5.9% | 15% |
-| Light colour (R/B) | 1.602 | 1.619 (+1.1%) | 2% |
+| Light colour (background R/B) | 1.160 | 1.146 (−1.2%) | ±2% |
+
+Under version 1 (face brightness on its own, face vs background, face R/B) all four checks passed too: face brightness +8.5%, face vs background 0.514 to 0.530, backlight 5.9%, face R/B +1.1%. The change to version 2 is described in `docs/held-out-2026-10-13.md`.
 
 ### What changed after matching the resize
 

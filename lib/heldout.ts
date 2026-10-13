@@ -1,14 +1,17 @@
 /**
- * Held-out photos (session4, taken 2026-10-13 evening, after the capture limits were frozen).
- * The capture limits in lib/conditions.ts were NOT re-tuned on these photos. They are used for two things:
- *   1. A held-out test of the capture check (this file: heldOutTally).
- *   2. Extra same-setup groups for the pooled noise floor (scripts/gen-noise-model.ts).
+ * Held-out photos (session4, taken 2026-10-13 evening, after the version 1 capture limits were frozen).
+ * They are used for three things:
+ *   1. A held-out test of the version 1 capture check (heldOutTally with compareConditionsV1). Strictly held out.
+ *   2. The same tally for the version 2 check. Session4 showed why version 1 failed (it read a redder face as warmer
+ *      light), so it informed the version 2 design and is no longer strictly held out for it. The limit values were
+ *      checked on sessions 1 to 3 only and not tuned on session4.
+ *   3. Extra same-setup groups for the pooled noise floor (scripts/gen-noise-model.ts).
  *
  * Folders under photos/session4/ are setups. `light` names the capture condition: setups with the same `light`
  * share lamp and framing, so the capture check should pass between them. B and C share the desk lamp; C differs
  * only in skin (after washing the face and applying a moisturizer), not in light.
  */
-import { compareConditions, type CaptureStats } from "./conditions";
+import { compareConditions, compareConditionsV1, type CaptureStats, type ConditionsResult } from "./conditions";
 
 export interface HeldOutSetup {
   label: string;
@@ -63,14 +66,18 @@ export interface HeldOutTally {
 
 const empty = (): PairCount => ({ total: 0, passed: 0, failing: {} });
 
-function add(c: PairCount, a: CaptureStats, b: CaptureStats) {
-  const r = compareConditions(a, b);
+type Compare = (a: CaptureStats, b: CaptureStats) => ConditionsResult;
+
+function add(c: PairCount, a: CaptureStats, b: CaptureStats, compare: Compare) {
+  const r = compare(a, b);
   c.total++;
   if (r.match) c.passed++;
   else for (const k of r.checks.filter((x) => !x.pass)) c.failing[k.label] = (c.failing[k.label] ?? 0) + 1;
 }
 
-export function heldOutTally(shots: HeldOutShot[]): HeldOutTally {
+/** Pair counts for the held-out photos. `version` 2 is the current check, 1 the frozen original. */
+export function heldOutTally(shots: HeldOutShot[], version: 1 | 2 = 2): HeldOutTally {
+  const compare: Compare = version === 1 ? compareConditionsV1 : compareConditions;
   const t: HeldOutTally = {
     photos: shots.length,
     setups: [...new Set(shots.map((s) => s.setup))].sort(),
@@ -84,12 +91,12 @@ export function heldOutTally(shots: HeldOutShot[]): HeldOutTally {
       if (a === b) continue;
       const key = [a.setup, b.setup].sort().join("-");
       t.byPair[key] ??= empty();
-      add(t.byPair[key], a.capture, b.capture);
+      add(t.byPair[key], a.capture, b.capture, compare);
       const la = HELD_OUT_SETUPS[a.setup]?.light ?? a.setup;
       const lb = HELD_OUT_SETUPS[b.setup]?.light ?? b.setup;
-      if (a.setup === b.setup) add(t.sameSetup, a.capture, b.capture);
-      else if (la !== lb) add(t.differentLight, a.capture, b.capture);
-      else add(t.sameLightSkinChange, a.capture, b.capture);
+      if (a.setup === b.setup) add(t.sameSetup, a.capture, b.capture, compare);
+      else if (la !== lb) add(t.differentLight, a.capture, b.capture, compare);
+      else add(t.sameLightSkinChange, a.capture, b.capture, compare);
     }
   return t;
 }
@@ -109,8 +116,7 @@ const inText = (c: PairCount) =>
     .map(([k, v]) => `${k.toLowerCase()} in ${v}`)
     .join(", ");
 
-/** One paragraph for the page, README and docs, so the held-out numbers read the same everywhere. */
-export function heldOutSentence(t: HeldOutTally): string {
+function tallyText(t: HeldOutTally): string {
   const s = t.sameSetup;
   const d = t.differentLight;
   const k = t.sameLightSkinChange;
@@ -119,9 +125,20 @@ export function heldOutSentence(t: HeldOutTally): string {
     .map(([key]) => `${key[0]} (${(HELD_OUT_SETUPS[key[0]]?.label ?? key[0]).toLowerCase()})`);
   const sameFail = s.total - s.passed;
   return (
-    `On ${t.photos} held-out photos from a different evening, with the limits frozen: ${s.passed} of ${s.total} same-setup pairs pass (${pctOf(s.passed, s.total)})` +
+    `${s.passed} of ${s.total} same-setup pairs pass (${pctOf(s.passed, s.total)})` +
     `${sameFail ? `; the ${sameFail} failures are all in setup ${failedIn.join(" and ")}, on ${inText(s).replace(/ in \d+/g, "")}` : ""}. ` +
     `${d.total - d.passed} of ${d.total} pairs with different light are blocked (${pctOf(d.total - d.passed, d.total)}). ` +
-    `Between the desk-lamp photos before and after moisturizer (same lamp), only ${k.passed} of ${k.total} pairs pass (${pctOf(k.passed, k.total)}); the others fail on ${inText(k)}.`
+    `Same lamp, before and after moisturizer: ${k.passed} of ${k.total} pairs pass (${pctOf(k.passed, k.total)})` +
+    `${k.passed < k.total ? `; the others fail on ${inText(k)}` : ""}.`
   );
+}
+
+/** Version 1 numbers: the strict held-out result. Quoted on the page, README and docs. */
+export function heldOutSentenceV1(t: HeldOutTally): string {
+  return `Before the change (version 1, limits frozen from sessions 1 to 3, ${t.photos} held-out photos): ${tallyText(t)}`;
+}
+
+/** Version 2 numbers. Session4 informed the design change, so these are not a strict held-out result. */
+export function heldOutSentenceV2(t: HeldOutTally): string {
+  return `After the change (version 2, same ${t.photos} photos, no longer strictly held out): ${tallyText(t)}`;
 }

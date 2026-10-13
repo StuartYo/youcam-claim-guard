@@ -1,6 +1,6 @@
 import { APPEARANCE_LABEL, CLAIM_POLICY } from "@/lib/claim-policy";
 import type { ConditionsResult } from "@/lib/conditions";
-import { badgeText, fmtSigned, METRIC_LABEL, type Evaluation, type Verdict } from "@/lib/noise";
+import { badgeText, fmtSigned, METRIC_HINT, METRIC_LABEL, type Evaluation, type Verdict } from "@/lib/noise";
 import { NoiseRuler } from "./NoiseRuler";
 
 export interface PanelSide {
@@ -30,7 +30,7 @@ export function Mark({ ok }: { ok: boolean }) {
 
 function fmtCheckValue(id: string, v: number) {
   if (id === "backlit") return `${(v * 100).toFixed(1)}%`;
-  if (id === "face-brightness") return v.toFixed(0);
+  if (id === "face-brightness") return v.toFixed(2);
   if (id === "color-temperature") return v.toFixed(3);
   return v.toFixed(2);
 }
@@ -72,10 +72,13 @@ export function ResultPanel({
   evaluation: Evaluation;
 }) {
   const shown = evaluation.metrics.filter((m) => Math.round(m.deltaUiPct) !== 0);
-  const allowed = evaluation.metrics.filter((m) => m.verdict === "claimable");
+  const confirmed = evaluation.metrics.filter((m) => m.verdict === "claimable");
+  // A confirmed drop is real, but it is not a gain a badge can claim.
+  const allowed = confirmed.filter((m) => m.deltaUi > 0);
+  const drops = confirmed.filter((m) => m.deltaUi < 0);
   const notAllowed = shown.filter((m) => m.verdict !== "claimable");
   const anyBlocked = evaluation.metrics.some((m) => m.verdict.startsWith("blocked"));
-  const tone = allowed.length ? "is-ok" : anyBlocked ? "is-blocked" : "is-neutral";
+  const tone = allowed.length ? "is-ok" : !conditions.match ? "is-blocked" : "is-neutral";
   const product = evaluation.product;
 
   return (
@@ -137,15 +140,17 @@ export function ResultPanel({
               </>
             ) : (
               <p className="verdict-line">
-                {evaluation.identical ? "No change" : anyBlocked ? "Badge blocked" : "No badge"}
+                {evaluation.identical ? "No change" : !conditions.match ? "Badge blocked" : "No gain to claim"}
                 <span>
                   {evaluation.identical
                     ? "The two photos are the same file, so every metric is within noise."
                     : !conditions.match
                       ? "The capture check failed, so the two photos are not comparable."
-                      : anyBlocked
-                        ? "The product can't make these claims."
-                        : "Every change is within the noise of a retake."}
+                      : drops.length
+                        ? `${drops.map((m) => METRIC_LABEL[m.metric]).join(" and ")} fell by more than retake noise. The other changes are within noise or not claimable for this product.`
+                        : anyBlocked
+                          ? "The changes are within noise or the product can't make these claims."
+                          : "Every change is within the noise of a retake."}
                 </span>
               </p>
             )}
@@ -164,12 +169,17 @@ export function ResultPanel({
           {evaluation.metrics.map((m) => (
             <div key={m.metric} className={`metric metric--${m.verdict}`}>
               <div className="metric__head">
-                <span className="metric__name">{METRIC_LABEL[m.metric]}</span>
+                <span className="metric__name">
+                  {METRIC_LABEL[m.metric]}
+                  <small>{METRIC_HINT[m.metric]}</small>
+                </span>
                 <span className="metric__ui">
                   score {m.before.ui} &rarr; {m.after.ui}
                   <em>{fmtSigned(m.deltaUiPct, 1)}%</em>
                 </span>
-                <span className={`tag tag--${m.verdict}`}>{VERDICT_LABEL[m.verdict]}</span>
+                <span className={`tag tag--${m.verdict === "claimable" && m.deltaUi < 0 ? "within-noise" : m.verdict}`}>
+                  {m.verdict === "claimable" && m.deltaUi < 0 ? "Real drop: no badge" : VERDICT_LABEL[m.verdict]}
+                </span>
               </div>
               <NoiseRuler deltaRaw={m.deltaRaw} mdc={m.mdc95} />
               <p className="metric__reason">

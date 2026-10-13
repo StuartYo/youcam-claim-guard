@@ -7,7 +7,7 @@ export interface PhoneScreen {
   tab: string;
   beforeImage: string;
   afterImage: string;
-  rows: Array<{ label: string; before: number; after: number; badge: string | null; note?: string }>;
+  rows: Array<{ label: string; hint?: string; before: number; after: number; badge: string | null; note?: string }>;
   allowed: boolean;
   /** Body text of the bottom card. */
   why: string;
@@ -56,7 +56,10 @@ export function PhoneMockup({ screens }: { screens: PhoneScreen[] }) {
           <ul className="app__rows">
             {s.rows.map((r) => (
               <li key={r.label}>
-                <span>{r.label}</span>
+                <span>
+                  {r.label}
+                  {r.hint && <small className="app__hint">{r.hint}</small>}
+                </span>
                 <span className="app__score">
                   {r.before} <span aria-hidden="true">&rarr;</span> {r.after}
                 </span>

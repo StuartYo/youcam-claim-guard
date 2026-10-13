@@ -60,7 +60,7 @@ h1{font:400 80px/1.02 "Instrument Serif",serif;letter-spacing:-.01em}
 <div class="tag">YouCam skin analysis, checked before the badge</div></div>
 <div class="row">
 <figure><img src="${before}"><figcaption>Ceiling light</figcaption></figure>
-<div class="mid"><span class="badge">+${pct}%</span><p>Moisture badge blocked</p></div>
+<div class="mid"><span class="badge">+${pct}%</span><p>Moisture, this pair<br>Badge blocked</p></div>
 <figure><img src="${after}"><figcaption>Desk lamp, phone moved</figcaption></figure>
 </div>
 <div class="foot"><h1>Same face, same room.<br>Desk lamp instead of ceiling light.</h1><span>Developer's own photos</span></div>

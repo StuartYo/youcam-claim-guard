@@ -1,7 +1,9 @@
 import sharp from "sharp";
+import { MAX_IMAGE_BYTES } from "../brand-api";
 import { MAX_INPUT_PIXELS } from "../measure";
 
-export const MAX_BYTES = 10 * 1024 * 1024;
+/** One photo limit for every route: the same 4 MB as the brand API. The browser downscales larger photos before upload. */
+export const MAX_BYTES = MAX_IMAGE_BYTES;
 export const MAX_LONG_SIDE = 2560;
 export const MIN_SHORT_SIDE = 480;
 const TYPES = new Set(["image/jpeg", "image/png"]);
@@ -25,7 +27,7 @@ function sniff(b: Buffer): "image/jpeg" | "image/png" | null {
 
 export async function prepareImage(file: File | null, label: string): Promise<PreparedImage> {
   if (!file || typeof file === "string") throw new InputError(`Add a ${label} photo.`);
-  if (file.size > MAX_BYTES) throw new InputError(`The ${label} photo is ${(file.size / 1048576).toFixed(1)} MB. The limit is 10 MB.`);
+  if (file.size > MAX_BYTES) throw new InputError(`The ${label} photo is ${(file.size / 1048576).toFixed(1)} MB. The limit is 4 MB per photo.`);
   if (file.type && !TYPES.has(file.type)) throw new InputError(`The ${label} photo must be JPG or PNG.`);
   const original = Buffer.from(await file.arrayBuffer());
   if (!sniff(original)) throw new InputError(`The ${label} file is not a JPG or PNG image.`);

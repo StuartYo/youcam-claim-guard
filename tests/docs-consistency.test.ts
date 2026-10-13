@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 import scores from "../data/scores.json";
 import type { DemoData } from "../lib/demo-types";
 import { calibrationMarkdown, calibrationTable } from "../lib/calibration";
-import { heldOutSentence, heldOutTally } from "../lib/heldout";
+import { heldOutSentenceV1, heldOutSentenceV2, heldOutTally } from "../lib/heldout";
+import { demoCases } from "../lib/demo";
+import { MAX_IMAGE_BYTES } from "../lib/brand-api";
+import { MAX_BYTES } from "../lib/server/image";
 import { METRIC_LABEL } from "../lib/metrics";
 import { noiseMarkdown, noiseModelFile } from "../lib/noise-groups";
 import { fix, headline, pairSentence, sameRoomHeadline } from "../lib/summary";
@@ -60,8 +63,11 @@ describe("README and docs quote the numbers the page computes", () => {
 
   it("held-out sentence, noise table and same-room means match the data", () => {
     const heldDoc = read("docs/held-out-2026-10-13.md");
-    const t = heldOutTally((data.heldOut ?? []).map((p) => ({ id: p.id, setup: p.setup!, capture: p.capture })));
-    for (const doc of [readme, heldDoc]) expect(doc).toContain(heldOutSentence(t));
+    const shots = (data.heldOut ?? []).map((p) => ({ id: p.id, setup: p.setup!, capture: p.capture }));
+    for (const doc of [readme, heldDoc]) {
+      expect(doc).toContain(heldOutSentenceV1(heldOutTally(shots, 1)));
+      expect(doc).toContain(heldOutSentenceV2(heldOutTally(shots, 2)));
+    }
     const table = noiseMarkdown(noiseModelFile(data), METRIC_LABEL);
     for (const doc of [readme, heldDoc, noiseDoc]) expect(doc).toContain(table);
     const r = sameRoomHeadline(data)!;
@@ -77,6 +83,29 @@ describe("README and docs quote the numbers the page computes", () => {
   it("no stale numbers remain", () => {
     for (const doc of [readme, noiseDoc, read("docs/positive-control-2026-10-13.md")]) {
       expect(doc).not.toContain("73.2");
+    }
+  });
+
+  it("one upload limit everywhere: 4 MB, matching the server", () => {
+    expect(MAX_BYTES).toBe(MAX_IMAGE_BYTES);
+    expect(MAX_BYTES).toBe(4 * 1024 * 1024);
+    for (const f of ["README.md", "app/page.tsx", "components/LiveMode.tsx", "app/api/conditions/route.ts", "lib/server/image.ts"]) {
+      expect(read(f)).not.toMatch(/10 MB|under 10|21 MB/);
+    }
+  });
+
+  it("no em dashes in the shipped text", () => {
+    for (const f of ["README.md", "app/page.tsx", "lib/demo.ts", "components/LiveMode.tsx", "components/AuditLog.tsx", "docs/held-out-2026-10-13.md"]) {
+      expect(read(f)).not.toContain("—");
+    }
+  });
+});
+
+describe("case copy", () => {
+  it("each case has a one-sentence summary; file names live in the details", () => {
+    for (const c of demoCases) {
+      expect(c.summary.replace(/\.$/, "")).not.toMatch(/\. [A-Z]/);
+      expect(c.summary).not.toMatch(/IMG_\d/);
     }
   });
 });

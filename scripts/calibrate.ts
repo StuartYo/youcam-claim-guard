@@ -7,7 +7,7 @@
  * These numbers are IN-SAMPLE: the thresholds were chosen by looking at these same 15 photos
  * (one face, one phone, one day). A full pass/block score here is a consistency check, not an accuracy figure.
  *
- * Held-out check: photos that played no part in choosing the thresholds go in photos/session4/,
+ * Held-out check: photos that played no part in choosing the version 1 thresholds go in photos/session4/,
  * one subfolder per lighting setup, e.g.
  *   photos/session4/A/*.jpg   ceiling light
  *   photos/session4/B/*.jpg   desk lamp, phone re-positioned
@@ -24,7 +24,7 @@ import sharp from "sharp";
 import { compareConditions, THRESHOLDS, type CaptureStats } from "../lib/conditions";
 import type { DemoData, DemoPhoto } from "../lib/demo-types";
 import { measure } from "../lib/measure";
-import { failingText, HELD_OUT_SETUPS, heldOutTally, pctOf, type HeldOutShot, type PairCount } from "../lib/heldout";
+import { failingText, HELD_OUT_SETUPS, heldOutSentenceV1, heldOutSentenceV2, heldOutTally, pctOf, type HeldOutShot, type PairCount } from "../lib/heldout";
 import { pairSentence, pairTally } from "../lib/summary";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -32,10 +32,9 @@ const data: DemoData = JSON.parse(readFileSync(path.join(ROOT, "data", "scores.j
 const P = data.photos;
 
 const metrics: Array<{ name: string; f: (a: CaptureStats, b: CaptureStats) => number; limit: number; unit: string }> = [
-  { name: "face brightness (relative)", f: (a, b) => Math.abs(b.centerLum - a.centerLum) / a.centerLum, limit: THRESHOLDS.faceLumRelative, unit: "%" },
-  { name: "face/background ratio (abs)", f: (a, b) => Math.abs(b.backlightRatio - a.backlightRatio), limit: THRESHOLDS.backlightRatioDelta, unit: "" },
+  { name: "face/background brightness (rel)", f: (a, b) => Math.abs(b.backlightRatio - a.backlightRatio) / a.backlightRatio, limit: THRESHOLDS.faceLumRelative, unit: "%" },
   { name: "blown-out background (max)", f: (a, b) => Math.max(a.clippedBorder, b.clippedBorder), limit: THRESHOLDS.clippedBorder, unit: "%" },
-  { name: "red/blue colour (relative)", f: (a, b) => Math.abs(b.redBlue - a.redBlue) / a.redBlue, limit: THRESHOLDS.redBlueRelative, unit: "%" },
+  { name: "background red/blue (relative)", f: (a, b) => Math.abs(b.bgRedBlue - a.bgRedBlue) / a.bgRedBlue, limit: THRESHOLDS.redBlueRelative, unit: "%" },
 ];
 
 const pairs: Array<[DemoPhoto, DemoPhoto]> = [];
@@ -104,9 +103,14 @@ async function heldOut(dir: string) {
 Held-out check: pending (no photos in ${dir}/<setup>/).`);
     return;
   }
-  const t = heldOutTally(shots);
+  const t1 = heldOutTally(shots, 1);
+  const t = heldOutTally(shots, 2);
   console.log(`
-Held-out check (${shots.length} photos in ${t.setups.length} setups from ${dir}). Limits frozen from sessions 1 to 3, not re-tuned.`);
+Held-out check (${shots.length} photos in ${t.setups.length} setups from ${dir}).`);
+  console.log(`  ${heldOutSentenceV1(t1)}`);
+  console.log(`  ${heldOutSentenceV2(t)}`);
+  console.log("  Session4 showed why version 1 failed, so it informed version 2 and is not strictly held out for it. Limit values checked on sessions 1 to 3 only.");
+  console.log("  Version 2 detail:");
   for (const g of t.setups) console.log(`  ${g}: ${HELD_OUT_SETUPS[g]?.note ?? "(no description in lib/heldout.ts)"}`);
   for (const s of shots) console.log(`  ${s.setup}/${s.id}  ${JSON.stringify(s.capture)}`);
   console.log("  Per setup pair (ordered pairs):");

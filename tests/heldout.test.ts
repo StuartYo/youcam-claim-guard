@@ -8,7 +8,9 @@ import { pairTally } from "../lib/summary";
 
 const data = scores as unknown as DemoData;
 const held = data.heldOut ?? [];
-const tally = heldOutTally(held.map((p) => ({ id: p.id, setup: p.setup!, capture: p.capture })));
+const shots = held.map((p) => ({ id: p.id, setup: p.setup!, capture: p.capture }));
+const v1 = heldOutTally(shots, 1);
+const tally = heldOutTally(shots, 2);
 
 describe("held-out check (session4, limits frozen from sessions 1 to 3)", () => {
   it("has four photos in each of A, B and C, kept out of the in-sample photos", () => {
@@ -18,11 +20,17 @@ describe("held-out check (session4, limits frozen from sessions 1 to 3)", () => 
     expect(pairTally(data.photos).total).toBe(210);
   });
 
-  it("reports the actual rates", () => {
+  it("version 1 (frozen limits, strictly held out): the reported rates", () => {
+    expect(v1.sameSetup).toMatchObject({ total: 36, passed: 32, failing: { "Face brightness": 4 } });
+    expect(v1.differentLight).toMatchObject({ total: 64, passed: 0 });
+    expect(v1.sameLightSkinChange).toMatchObject({ total: 32, passed: 10, failing: { "Light colour": 15, "Face brightness": 7 } });
+  });
+
+  it("version 2 (background colour, brightness relative to background): the reported rates", () => {
     expect(tally.sameSetup).toMatchObject({ total: 36, passed: 32, failing: { "Face brightness": 4 } });
     expect(tally.byPair["B-B"].passed).toBe(8);
     expect(tally.differentLight).toMatchObject({ total: 64, passed: 0 });
-    expect(tally.sameLightSkinChange).toMatchObject({ total: 32, passed: 10, failing: { "Light colour": 15, "Face brightness": 7 } });
+    expect(tally.sameLightSkinChange).toMatchObject({ total: 32, passed: 26, failing: { "Face brightness": 6 } });
   });
 });
 
@@ -48,17 +56,16 @@ describe("held-out demo cases", () => {
     expect(c.evaluation.badgeAllowed).toBe(false);
   });
 
-  it("real moisturizer, same lamp: no moisture badge; moisture is inside the floor, pore and wrinkle blocked by claim type", () => {
+  it("real moisturizer, same lamp: capture passes, no moisture badge; moisture is inside the floor, radiance is a real drop", () => {
     const c = getCase("moisturizer");
     expect(c.product).toBe("moisturizer");
+    expect(c.conditions.match).toBe(true);
     expect(c.evaluation.badgeAllowed).toBe(false);
-    expect(v("moisturizer", "moisture").aboveNoise).toBe(false);
-    expect(v("moisturizer", "moisture").verdict).toBe("blocked-conditions");
+    expect(v("moisturizer", "moisture")).toMatchObject({ verdict: "within-noise", aboveNoise: false });
     expect(v("moisturizer", "pore").verdict).toBe("blocked-claim-type");
     expect(v("moisturizer", "wrinkle").verdict).toBe("blocked-claim-type");
-    expect(v("moisturizer", "radiance").verdict).toBe("blocked-conditions");
-    expect(c.conditions.reasons).toHaveLength(1);
-    expect(c.conditions.reasons[0]).toMatch(/10\.1% brighter/);
-    expect(caseVerdict(c).tone).toBe("blocked");
+    expect(v("moisturizer", "radiance")).toMatchObject({ verdict: "claimable", deltaUi: -2 });
+    expect(c.summary.split(". ").length).toBe(1);
+    expect(caseVerdict(c)).toEqual({ label: "No gain: radiance fell", tone: "neutral" });
   });
 });

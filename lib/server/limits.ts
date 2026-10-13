@@ -41,6 +41,9 @@ export function limiter(route: string, max: number, windowMs = 60_000): RateLimi
   return l;
 }
 
+/** Two photos of up to 4 MB each (lib/server/image.ts MAX_BYTES) plus form overhead. */
+export const MAX_FORM_BODY = 9 * 1024 * 1024;
+
 export class BodyTooLarge extends Error {
   constructor(public limit: number) {
     super(`Request body is larger than ${Math.round(limit / 1048576)} MB.`);

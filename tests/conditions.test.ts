@@ -1,21 +1,21 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import scores from "../data/scores.json";
-import { compareConditions, THRESHOLDS, type CaptureStats } from "../lib/conditions";
+import { compareConditions, compareConditionsV1, THRESHOLDS, type CaptureStats } from "../lib/conditions";
 import type { DemoData, DemoPhoto } from "../lib/demo-types";
 import { measure } from "../lib/measure";
 
 const data = scores as unknown as DemoData;
 const bySession = (s: string) => data.photos.filter((p) => p.session === s);
 const pairs = (xs: DemoPhoto[], ys: DemoPhoto[]) => xs.flatMap((a) => ys.filter((b) => b !== a).map((b) => [a, b] as const));
-const base: CaptureStats = { centerLum: 105, borderLum: 212, backlightRatio: 0.5, clippedBorder: 0, redBlue: 1.6 };
+const base: CaptureStats = { centerLum: 105, borderLum: 212, backlightRatio: 0.5, clippedBorder: 0, redBlue: 1.6, bgRedBlue: 1.15 };
 
 describe("compareConditions (synthetic)", () => {
   it("passes identical stats", () => {
     expect(compareConditions(base, base).match).toBe(true);
   });
   it("fails on a brightness jump with a readable reason", () => {
-    const r = compareConditions(base, { ...base, centerLum: 125 });
+    const r = compareConditions(base, { ...base, centerLum: 125, backlightRatio: 0.59 });
     expect(r.match).toBe(false);
     expect(r.reasons[0]).toMatch(/brighter/);
   });
@@ -25,8 +25,20 @@ describe("compareConditions (synthetic)", () => {
     expect(r.reasons.join(" ")).toMatch(/after photo is backlit/);
   });
   it("flags a colour temperature shift", () => {
-    const r = compareConditions(base, { ...base, redBlue: base.redBlue * (1 + THRESHOLDS.redBlueRelative + 0.01) });
+    const r = compareConditions(base, { ...base, bgRedBlue: base.bgRedBlue * (1 + THRESHOLDS.redBlueRelative + 0.01) });
     expect(r.reasons.join(" ")).toMatch(/warmer/);
+  });
+});
+
+describe("version 2 ignores what skincare changes", () => {
+  it("passes a redder face when the background colour is unchanged", () => {
+    expect(compareConditions(base, { ...base, redBlue: base.redBlue * 1.05 }).match).toBe(true);
+  });
+  it("passes a uniform exposure change (face and background both brighter)", () => {
+    expect(compareConditions(base, { ...base, centerLum: 120, borderLum: 242.3 }).match).toBe(true);
+  });
+  it("version 1 blocked the redder face; version 2 does not", () => {
+    expect(compareConditionsV1(base, { ...base, redBlue: base.redBlue * 1.05 }).match).toBe(false);
   });
 });
 

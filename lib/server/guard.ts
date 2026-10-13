@@ -23,6 +23,15 @@ export function readLimits(env: Record<string, string | undefined> = process.env
   return { daily: n(env.DAILY_LIVE_LIMIT, 20), perIp: n(env.PER_IP_LIVE_LIMIT, 4) };
 }
 
+/**
+ * LIVE_ANALYSIS_ENABLED switches paid analysis on or off without a redeploy of code. Default on; "false", "0" or "off"
+ * turn it off. The daily caps still apply when it is on.
+ */
+export function liveEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  const v = (env.LIVE_ANALYSIS_ENABLED ?? "").trim().toLowerCase();
+  return !["false", "0", "off", "no"].includes(v);
+}
+
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX = 500;
 
