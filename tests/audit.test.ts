@@ -29,6 +29,16 @@ describe("labels and switches", () => {
   it("badges name the improvement for wrinkle and pore", () => {
     expect(badgeText("wrinkle", 12)).toBe("Smoother skin (wrinkle score) +12%");
     expect(badgeText("pore", 5)).toBe("Less visible pores (pore score) +5%");
+  });
+
+  it("drops use the neutral score name, not the improvement wording", () => {
+    expect(badgeText("pore", -3)).toBe("Pore score −3%");
+    expect(badgeText("wrinkle", -2.5)).toBe("Wrinkle score −3%");
+    expect(badgeText("radiance", -4)).toBe("Radiance −4%");
+    // The virtual foundation case: pore score fell, so its badge must not say "Less visible pores".
+    const pore = getCase("real-change").evaluation.metrics.find((m) => m.metric === "pore")!;
+    expect(pore.deltaUiPct).toBeLessThan(0);
+    expect(badgeText("pore", pore.deltaUiPct)).toBe("Pore score −3%");
     expect(getCase("real-change").evaluation.metrics.find((m) => m.metric === "radiance")!.verdict).toBe("claimable");
   });
 

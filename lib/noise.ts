@@ -6,9 +6,9 @@
  */
 import { claimKind, claimTypeReason, type ClaimKind, type ProductCategory } from "./claim-policy";
 import type { ConditionsResult } from "./conditions";
-import { BADGE_LABEL, METRIC_HINT, METRIC_LABEL, METRICS, type Metric } from "./metrics";
+import { BADGE_LABEL, METRIC_HINT, METRIC_LABEL, METRICS, NEUTRAL_LABEL, type Metric } from "./metrics";
 
-export { BADGE_LABEL, METRIC_HINT, METRIC_LABEL, METRICS, type Metric };
+export { BADGE_LABEL, METRIC_HINT, METRIC_LABEL, METRICS, NEUTRAL_LABEL, type Metric };
 
 export interface Score {
   ui: number;
@@ -119,8 +119,10 @@ export function pctText(deltaUiPct: number): string {
   return `${r > 0 ? "+" : r < 0 ? "−" : "±"}${Math.abs(r)}%`;
 }
 
+/** Gains name the improvement ("Less visible pores (pore score) +5%"); drops and zero use the plain score name ("Pore score −3%"). */
 export function badgeText(metric: Metric, deltaUiPct: number): string {
-  return `${BADGE_LABEL[metric]} ${pctText(deltaUiPct)}`;
+  const label = roundPct(deltaUiPct) > 0 ? BADGE_LABEL[metric] : NEUTRAL_LABEL[metric];
+  return `${label} ${pctText(deltaUiPct)}`;
 }
 
 export interface EvaluateInput {

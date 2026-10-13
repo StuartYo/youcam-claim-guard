@@ -20,6 +20,14 @@ export const BADGE_LABEL: Record<Metric, string> = {
   radiance: "Radiance",
 };
 
+/** Neutral names for changes that are not gains: "Less visible pores −3%" reads like a good result, so drops use the score name. */
+export const NEUTRAL_LABEL: Record<Metric, string> = {
+  moisture: "Moisture",
+  pore: "Pore score",
+  wrinkle: "Wrinkle score",
+  radiance: "Radiance",
+};
+
 /** What a higher score means, shown next to the metric name. */
 export const METRIC_HINT: Record<Metric, string> = {
   moisture: "higher score = more hydrated",
