@@ -12,7 +12,7 @@ const VERDICT_LABEL: Record<Verdict, string> = {
   claimable: "Claimable",
   "within-noise": "Within noise",
   "no-visible-change": "No visible change",
-  "blocked-conditions": "Blocked: light differs",
+  "blocked-conditions": "Blocked: photos not comparable",
   "blocked-claim-type": "Blocked: claim type",
 };
 
@@ -142,7 +142,7 @@ export function ResultPanel({
                   {evaluation.identical
                     ? "The two photos are the same file, so every metric is within noise."
                     : !conditions.match
-                      ? "The photos were taken under different light."
+                      ? "The capture check failed, so the two photos are not comparable."
                       : anyBlocked
                         ? "The product can't make these claims."
                         : "Every change is within the noise of a retake."}

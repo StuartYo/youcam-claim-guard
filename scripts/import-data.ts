@@ -13,6 +13,7 @@ import sharp from "sharp";
 import { measure } from "../lib/measure";
 import { METRICS, type Scores } from "../lib/noise";
 import type { BaselinePhoto, DemoData, DemoPhoto, SimulatedPhoto } from "../lib/demo-types";
+import { HELD_OUT_SETUPS } from "../lib/heldout";
 import { exportCached } from "./export-cached";
 import { writeNoiseModel } from "./gen-noise-model";
 
@@ -111,24 +112,27 @@ async function main() {
     console.log("vto", s.id, JSON.stringify(parsed.scores), JSON.stringify(capture));
   }
 
-  // Held-out photos (optional): photos/session4/<setup>/*.jpg with results in results/s4/<setup>/*.json.
-  // Kept under `heldOut`, never in `photos`, so they don't touch the noise model or the in-sample calibration.
-  // photos/session4/lamp-only.json ({ beforeId, afterId, beforeNote, afterNote }) names the same-spot pair where only the
-  // lamp changed; it becomes the headline case on the page.
+  // Held-out photos (optional): photos/session4/<setup>/*.jpg with results in results/s4/<setup>/*.json or results/s4<setup>/*.json.
+  // Kept under `heldOut`, never in `photos`, so they don't touch the in-sample capture calibration. They do join the pooled
+  // noise floor as extra same-setup groups (lib/noise-groups.ts). Setup labels and light groups are in lib/heldout.ts.
+  // photos/session4/lamp-only.json ({ beforeId, afterId, beforeNote, afterNote, title, summary }) names the headline pair.
   const heldOut: DemoPhoto[] = [];
-  const s4 = path.join(ROOT, "results", "s4");
-  if (existsSync(s4)) {
-    for (const setup of readdirSync(s4).sort()) {
-      const dir = path.join(s4, setup);
-      for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
-        const id = f.replace(/^\d+_/, "").replace(/\.json$/, "");
-        const src = path.join(ROOT, "photos", "session4", setup, `${id}.jpg`);
-        if (!existsSync(src)) throw new Error(`missing photo ${src}`);
-        const dst = path.join(outImg, `${id}.jpg`);
-        await sharp(src).rotate().resize(720, 720, { fit: "inside" }).jpeg({ quality: 80, mozjpeg: true }).toFile(dst);
-        const capture = await measure(dst);
-        heldOut.push({ id, session: "s4", setup, sessionLabel: `Held-out: ${setup}`, image: `/demo/${id}.jpg`, capture, ...parseScores(path.join(dir, f)) });
-      }
+  const s4Photos = path.join(ROOT, "photos", "session4");
+  const setups = existsSync(s4Photos) ? readdirSync(s4Photos).filter((d) => !d.includes(".")).sort() : [];
+  for (const setup of setups) {
+    const dir = [path.join(ROOT, "results", "s4", setup), path.join(ROOT, "results", `s4${setup}`)].find(existsSync);
+    if (!dir) throw new Error(`no results for photos/session4/${setup} (expected results/s4/${setup}/ or results/s4${setup}/)`);
+    for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort()) {
+      const id = f.replace(/^\d+_/, "").replace(/\.json$/, "");
+      const src = path.join(s4Photos, setup, `${id}.jpg`);
+      if (!existsSync(src)) throw new Error(`missing photo ${src}`);
+      const dst = path.join(outImg, `${id}.jpg`);
+      await sharp(src).rotate().resize(720, 720, { fit: "inside" }).jpeg({ quality: 80, mozjpeg: true }).toFile(dst);
+      const capture = await measure(dst);
+      const label = HELD_OUT_SETUPS[setup]?.label ?? setup;
+      const parsed = parseScores(path.join(dir, f));
+      heldOut.push({ id, session: "s4", setup, sessionLabel: `Held-out ${setup}: ${label}`, image: `/demo/${id}.jpg`, capture, ...parsed });
+      console.log("s4", setup, id, JSON.stringify(parsed.scores.moisture), JSON.stringify(capture));
     }
   }
   const lampOnlyFile = path.join(ROOT, "photos", "session4", "lamp-only.json");
@@ -144,7 +148,7 @@ async function main() {
     ...(lampOnly ? { lampOnly } : {}),
   };
   writeFileSync(path.join(ROOT, "data", "scores.json"), JSON.stringify(data, null, 1) + "\n");
-  console.log(`wrote data/scores.json (${photos.length} photos, ${duplicates.length} duplicate)`);
+  console.log(`wrote data/scores.json (${photos.length} photos, ${duplicates.length} duplicate, ${heldOut.length} held-out)`);
   writeNoiseModel();
   exportCached();
 }

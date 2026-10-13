@@ -1,6 +1,8 @@
 /**
  * Noise model. Repeated photos of an unchanged face under the same light give a per-metric SD on raw_score.
- * The minimum detectable change at 95% for the difference of two shots is MDC95 = 1.96 * sqrt(2) * SD.
+ * The SD is pooled over several same-setup groups (each group keeps its own mean, so a lighting difference between
+ * groups does not count as noise). The minimum detectable change at 95% for the difference of two shots is
+ * MDC95 = 1.96 * sqrt(2) * SD.
  */
 import { claimKind, claimTypeReason, type ClaimKind, type ProductCategory } from "./claim-policy";
 import type { ConditionsResult } from "./conditions";
@@ -15,8 +17,10 @@ export interface Score {
 export type Scores = Partial<Record<Metric, Score>>;
 
 export interface MetricNoise {
+  /** Photos behind the SD. */
   n: number;
-  mean: number;
+  /** Degrees of freedom: photos minus groups. */
+  df: number;
   sd: number;
   mdc95: number;
 }
@@ -41,12 +45,27 @@ export function mdc95(sd: number): number {
   return MDC_FACTOR * sd;
 }
 
-export function buildNoiseModel(samples: Record<Metric, number[]>): NoiseModel {
+/** Pooled within-group SD: sqrt( sum((n_i - 1) * sd_i^2) / sum(n_i - 1) ). Each group keeps its own mean. */
+export function pooledSd(groups: number[][]): number {
+  let num = 0;
+  let den = 0;
+  for (const xs of groups) {
+    if (xs.length < 2) continue;
+    num += (xs.length - 1) * sampleSd(xs) ** 2;
+    den += xs.length - 1;
+  }
+  if (!den) throw new Error("need at least one group with 2 values");
+  return Math.sqrt(num / den);
+}
+
+/** Noise model from one or more same-setup groups. With a single group this is the plain sample SD. */
+export function buildNoiseModel(groups: Array<Record<Metric, number[]>>): NoiseModel {
   const out = {} as NoiseModel;
   for (const m of METRICS) {
-    const xs = samples[m];
-    const sd = sampleSd(xs);
-    out[m] = { n: xs.length, mean: round(mean(xs), 3), sd: round(sd, 3), mdc95: round(mdc95(sd), 3) };
+    const gs = groups.map((g) => g[m]).filter((xs) => xs.length >= 2);
+    const sd = pooledSd(gs);
+    const n = gs.reduce((a, xs) => a + xs.length, 0);
+    out[m] = { n, df: n - gs.length, sd: round(sd, 3), mdc95: round(mdc95(sd), 3) };
   }
   return out;
 }

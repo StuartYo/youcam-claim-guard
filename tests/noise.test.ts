@@ -3,7 +3,8 @@ import scores from "../data/scores.json";
 import noiseJson from "../data/noise-model.json";
 import { compareConditions, type CaptureStats } from "../lib/conditions";
 import type { DemoData } from "../lib/demo-types";
-import { badgeText, buildNoiseModel, evaluate, mdc95, METRICS, sampleSd, type Metric, type NoiseModel } from "../lib/noise";
+import { badgeText, buildNoiseModel, evaluate, mdc95, METRICS, pooledSd, sampleSd, type Metric, type NoiseModel } from "../lib/noise";
+import { noiseGroups, noiseModelFile, pairsPastFloor } from "../lib/noise-groups";
 
 const data = scores as unknown as DemoData;
 const noise = noiseJson.metrics as NoiseModel;
@@ -17,17 +18,39 @@ describe("noise model", () => {
     expect(sampleSd([1, 2, 3, 4])).toBeCloseTo(1.2910, 4);
   });
 
-  it("regenerating from session1 reproduces the shipped noise-model.json", () => {
-    const s1 = data.photos.filter((x) => x.session === "s1");
-    expect(s1).toHaveLength(6);
-    const samples = Object.fromEntries(METRICS.map((m) => [m, s1.map((x) => x.scores[m]!.raw)])) as Record<Metric, number[]>;
-    expect(buildNoiseModel(samples)).toEqual(noise);
+  it("pooled SD with one group is the plain sample SD; with groups each keeps its own mean", () => {
+    expect(pooledSd([[1, 2, 3, 4]])).toBeCloseTo(sampleSd([1, 2, 3, 4]), 10);
+    // Two groups with the same spread but far-apart means: the gap between them is not noise.
+    expect(pooledSd([[1, 2, 3], [101, 102, 103]])).toBeCloseTo(1, 10);
   });
 
-  it("matches the documented noise floor (moisture 5.1, pore 2.9, radiance 3.4)", () => {
-    expect(noise.moisture.mdc95).toBeCloseTo(5.1, 1);
-    expect(noise.pore.mdc95).toBeCloseTo(2.9, 1);
-    expect(noise.radiance.mdc95).toBeCloseTo(3.4, 1);
+  it("regenerating from the five same-setup groups reproduces the shipped noise-model.json", () => {
+    const groups = noiseGroups(data);
+    expect(groups.map((g) => [g.key, g.photos.length])).toEqual([["s1", 6], ["s3", 4], ["s4A", 4], ["s4B", 4], ["s4C", 4]]);
+    expect(noiseModelFile(data)).toEqual(noiseJson);
+    const samples = Object.fromEntries(METRICS.map((m) => [m, data.photos.filter((x) => x.session === "s1").map((x) => x.scores[m]!.raw)])) as Record<Metric, number[]>;
+    expect(buildNoiseModel([samples])).toEqual(noiseJson.session1Only);
+  });
+
+  it("matches the documented noise floor (pooled: moisture 7.1, pore 8.9, wrinkle 1.5, radiance 3.8; session 1 alone was 5.1, 2.9, 0.17, 3.4)", () => {
+    expect(noise.moisture.mdc95).toBeCloseTo(7.1, 1);
+    expect(noise.pore.mdc95).toBeCloseTo(8.9, 1);
+    expect(noise.wrinkle.mdc95).toBeCloseTo(1.5, 1);
+    expect(noise.radiance.mdc95).toBeCloseTo(3.8, 1);
+    expect(noiseJson.session1Only.moisture.mdc95).toBeCloseTo(5.1, 1);
+    expect(noiseJson.session1Only.wrinkle.mdc95).toBeCloseTo(0.17, 2);
+  });
+
+  it("the session 1 floor was too tight for the held-out retakes", () => {
+    const held = noiseGroups(data).filter((g) => g.heldOut);
+    const s1 = Object.fromEntries(METRICS.map((m) => [m, noiseJson.session1Only[m].mdc95])) as Record<Metric, number>;
+    const pooled = Object.fromEntries(METRICS.map((m) => [m, noise[m].mdc95])) as Record<Metric, number>;
+    const a = pairsPastFloor(held, s1);
+    const b = pairsPastFloor(held, pooled);
+    expect(a.moisture).toEqual({ pairs: 18, past: 6 });
+    expect(a.wrinkle).toEqual({ pairs: 18, past: 10 });
+    expect(b.moisture.past).toBe(3);
+    expect(b.radiance.past).toBe(0);
   });
 });
 
@@ -87,9 +110,9 @@ describe("evaluate", () => {
   });
 
   it("raw past MDC but display score unchanged is not claimable", () => {
-    // Wrinkle in the positive control: ui 97 -> 97, raw +0.36 against a floor of 0.17.
-    const before = { wrinkle: { ui: 97, raw: 98.73 } };
-    const after = { wrinkle: { ui: 97, raw: 99.09 } };
+    // Synthetic: raw moves past the wrinkle floor while the display score stays at 97.
+    const before = { wrinkle: { ui: 97, raw: 97.0 } };
+    const after = { wrinkle: { ui: 97, raw: 97.0 + noise.wrinkle.mdc95 + 0.2 } };
     const ev = evaluate({ before, after, conditions: match, noise });
     expect(Math.abs(ev.metrics[0].deltaRaw)).toBeGreaterThan(noise.wrinkle.mdc95);
     expect(ev.metrics[0].deltaUi).toBe(0);
@@ -99,8 +122,8 @@ describe("evaluate", () => {
   });
 
   it("a one-point display change with raw past MDC is claimable", () => {
-    const before = { wrinkle: { ui: 97, raw: 98.73 } };
-    const after = { wrinkle: { ui: 98, raw: 99.09 } };
+    const before = { wrinkle: { ui: 97, raw: 97.0 } };
+    const after = { wrinkle: { ui: 98, raw: 97.0 + noise.wrinkle.mdc95 + 0.2 } };
     expect(evaluate({ before, after, conditions: match, noise }).metrics[0].verdict).toBe("claimable");
   });
 
@@ -115,7 +138,8 @@ describe("evaluate", () => {
     expect(v("moisture").verdict).toBe("claimable");
     expect(v("radiance").verdict).toBe("claimable");
     expect(v("pore").verdict).toBe("within-noise");
-    expect(v("wrinkle").verdict).toBe("no-visible-change");
+    // +0.36 raw: past the old session 1 floor (0.17), inside the pooled floor (1.51).
+    expect(v("wrinkle").verdict).toBe("within-noise");
   });
 
   it("positive control as foundation: radiance is an appearance claim, moisture and wrinkle are blocked by claim type", () => {

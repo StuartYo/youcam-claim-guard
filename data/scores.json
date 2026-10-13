@@ -593,5 +593,423 @@
    "overall": 85,
    "skinAge": 23
   }
- ]
+ ],
+ "heldOut": [
+  {
+   "id": "IMG_1436",
+   "session": "s4",
+   "setup": "A",
+   "sessionLabel": "Held-out A: Ceiling light",
+   "image": "/demo/IMG_1436.jpg",
+   "capture": {
+    "centerLum": 114.5,
+    "borderLum": 212.4,
+    "backlightRatio": 0.539,
+    "clippedBorder": 0,
+    "redBlue": 1.533
+   },
+   "scores": {
+    "pore": {
+     "ui": 76,
+     "raw": 68.677
+    },
+    "radiance": {
+     "ui": 82,
+     "raw": 84.094
+    },
+    "moisture": {
+     "ui": 73,
+     "raw": 57.224
+    },
+    "wrinkle": {
+     "ui": 90,
+     "raw": 95.332
+    }
+   },
+   "overall": 80.25,
+   "skinAge": 27
+  },
+  {
+   "id": "IMG_1437",
+   "session": "s4",
+   "setup": "A",
+   "sessionLabel": "Held-out A: Ceiling light",
+   "image": "/demo/IMG_1437.jpg",
+   "capture": {
+    "centerLum": 120.5,
+    "borderLum": 211.3,
+    "backlightRatio": 0.57,
+    "clippedBorder": 0,
+    "redBlue": 1.511
+   },
+   "scores": {
+    "pore": {
+     "ui": 71,
+     "raw": 57.288
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 81.739
+    },
+    "moisture": {
+     "ui": 70,
+     "raw": 50.338
+    },
+    "wrinkle": {
+     "ui": 86,
+     "raw": 93.276
+    }
+   },
+   "overall": 77,
+   "skinAge": 27
+  },
+  {
+   "id": "IMG_1438",
+   "session": "s4",
+   "setup": "A",
+   "sessionLabel": "Held-out A: Ceiling light",
+   "image": "/demo/IMG_1438.jpg",
+   "capture": {
+    "centerLum": 115.4,
+    "borderLum": 212,
+    "backlightRatio": 0.544,
+    "clippedBorder": 0,
+    "redBlue": 1.529
+   },
+   "scores": {
+    "pore": {
+     "ui": 70,
+     "raw": 55.188
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 81.284
+    },
+    "wrinkle": {
+     "ui": 85,
+     "raw": 92.882
+    },
+    "moisture": {
+     "ui": 70,
+     "raw": 49.259
+    }
+   },
+   "overall": 76.5,
+   "skinAge": 27
+  },
+  {
+   "id": "IMG_1439",
+   "session": "s4",
+   "setup": "A",
+   "sessionLabel": "Held-out A: Ceiling light",
+   "image": "/demo/IMG_1439.jpg",
+   "capture": {
+    "centerLum": 117.2,
+    "borderLum": 212.4,
+    "backlightRatio": 0.552,
+    "clippedBorder": 0,
+    "redBlue": 1.527
+   },
+   "scores": {
+    "pore": {
+     "ui": 71,
+     "raw": 58.236
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 81.009
+    },
+    "wrinkle": {
+     "ui": 85,
+     "raw": 92.619
+    },
+    "moisture": {
+     "ui": 70,
+     "raw": 49.743
+    }
+   },
+   "overall": 76.75,
+   "skinAge": 27
+  },
+  {
+   "id": "IMG_1431",
+   "session": "s4",
+   "setup": "B",
+   "sessionLabel": "Held-out B: Desk lamp",
+   "image": "/demo/IMG_1431.jpg",
+   "capture": {
+    "centerLum": 86.2,
+    "borderLum": 208,
+    "backlightRatio": 0.414,
+    "clippedBorder": 0.048,
+    "redBlue": 1.604
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 60.267
+    },
+    "radiance": {
+     "ui": 80,
+     "raw": 78.807
+    },
+    "moisture": {
+     "ui": 74,
+     "raw": 60.044
+    },
+    "wrinkle": {
+     "ui": 96,
+     "raw": 98.467
+    }
+   },
+   "overall": 80.5,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1432",
+   "session": "s4",
+   "setup": "B",
+   "sessionLabel": "Held-out B: Desk lamp",
+   "image": "/demo/IMG_1432.jpg",
+   "capture": {
+    "centerLum": 91.4,
+    "borderLum": 208.6,
+    "backlightRatio": 0.438,
+    "clippedBorder": 0.053,
+    "redBlue": 1.598
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 60.364
+    },
+    "radiance": {
+     "ui": 80,
+     "raw": 79.368
+    },
+    "moisture": {
+     "ui": 75,
+     "raw": 62.721
+    },
+    "wrinkle": {
+     "ui": 96,
+     "raw": 98.501
+    }
+   },
+   "overall": 80.75,
+   "skinAge": 26
+  },
+  {
+   "id": "IMG_1433",
+   "session": "s4",
+   "setup": "B",
+   "sessionLabel": "Held-out B: Desk lamp",
+   "image": "/demo/IMG_1433.jpg",
+   "capture": {
+    "centerLum": 98.3,
+    "borderLum": 209.4,
+    "backlightRatio": 0.469,
+    "clippedBorder": 0.061,
+    "redBlue": 1.594
+   },
+   "scores": {
+    "pore": {
+     "ui": 72,
+     "raw": 60.616
+    },
+    "radiance": {
+     "ui": 82,
+     "raw": 82.031
+    },
+    "moisture": {
+     "ui": 77,
+     "raw": 68.003
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.778
+    }
+   },
+   "overall": 82,
+   "skinAge": 26
+  },
+  {
+   "id": "IMG_1434",
+   "session": "s4",
+   "setup": "B",
+   "sessionLabel": "Held-out B: Desk lamp",
+   "image": "/demo/IMG_1434.jpg",
+   "capture": {
+    "centerLum": 99.6,
+    "borderLum": 209.8,
+    "backlightRatio": 0.475,
+    "clippedBorder": 0.05,
+    "redBlue": 1.598
+   },
+   "scores": {
+    "pore": {
+     "ui": 73,
+     "raw": 62.47
+    },
+    "radiance": {
+     "ui": 81,
+     "raw": 81.668
+    },
+    "moisture": {
+     "ui": 75,
+     "raw": 63.86
+    },
+    "wrinkle": {
+     "ui": 96,
+     "raw": 98.362
+    }
+   },
+   "overall": 81.25,
+   "skinAge": 26
+  },
+  {
+   "id": "IMG_1441",
+   "session": "s4",
+   "setup": "C",
+   "sessionLabel": "Held-out C: Desk lamp, after moisturizer",
+   "image": "/demo/IMG_1441.jpg",
+   "capture": {
+    "centerLum": 94.1,
+    "borderLum": 208,
+    "backlightRatio": 0.453,
+    "clippedBorder": 0.002,
+    "redBlue": 1.658
+   },
+   "scores": {
+    "pore": {
+     "ui": 77,
+     "raw": 70.914
+    },
+    "radiance": {
+     "ui": 78,
+     "raw": 73.852
+    },
+    "moisture": {
+     "ui": 74,
+     "raw": 59.578
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.928
+    }
+   },
+   "overall": 81.5,
+   "skinAge": 24
+  },
+  {
+   "id": "IMG_1442",
+   "session": "s4",
+   "setup": "C",
+   "sessionLabel": "Held-out C: Desk lamp, after moisturizer",
+   "image": "/demo/IMG_1442.jpg",
+   "capture": {
+    "centerLum": 100.6,
+    "borderLum": 210.8,
+    "backlightRatio": 0.477,
+    "clippedBorder": 0,
+    "redBlue": 1.626
+   },
+   "scores": {
+    "pore": {
+     "ui": 77,
+     "raw": 71.217
+    },
+    "radiance": {
+     "ui": 78,
+     "raw": 74.486
+    },
+    "moisture": {
+     "ui": 75,
+     "raw": 63.749
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.883
+    }
+   },
+   "overall": 81.75,
+   "skinAge": 26
+  },
+  {
+   "id": "IMG_1443",
+   "session": "s4",
+   "setup": "C",
+   "sessionLabel": "Held-out C: Desk lamp, after moisturizer",
+   "image": "/demo/IMG_1443.jpg",
+   "capture": {
+    "centerLum": 97.1,
+    "borderLum": 209.9,
+    "backlightRatio": 0.463,
+    "clippedBorder": 0,
+    "redBlue": 1.628
+   },
+   "scores": {
+    "pore": {
+     "ui": 76,
+     "raw": 69.889
+    },
+    "radiance": {
+     "ui": 79,
+     "raw": 77.417
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 99.079
+    },
+    "moisture": {
+     "ui": 76,
+     "raw": 64.716
+    }
+   },
+   "overall": 82,
+   "skinAge": 25
+  },
+  {
+   "id": "IMG_1444",
+   "session": "s4",
+   "setup": "C",
+   "sessionLabel": "Held-out C: Desk lamp, after moisturizer",
+   "image": "/demo/IMG_1444.jpg",
+   "capture": {
+    "centerLum": 96.5,
+    "borderLum": 209.8,
+    "backlightRatio": 0.46,
+    "clippedBorder": 0,
+    "redBlue": 1.63
+   },
+   "scores": {
+    "pore": {
+     "ui": 77,
+     "raw": 71.522
+    },
+    "radiance": {
+     "ui": 79,
+     "raw": 77.276
+    },
+    "moisture": {
+     "ui": 75,
+     "raw": 62.012
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 98.954
+    }
+   },
+   "overall": 82,
+   "skinAge": 25
+  }
+ ],
+ "lampOnly": {
+  "beforeId": "IMG_1437",
+  "afterId": "IMG_1432",
+  "beforeNote": "ceiling light only",
+  "afterNote": "desk lamp, same room, phone re-positioned",
+  "title": "Same room: ceiling light to desk lamp",
+  "summary": "Same face, same room, same evening, no skincare in between. The ceiling light was switched off and a desk lamp switched on, and the phone was re-positioned: in the lamp photos it sits lower and tilts up, so the ceiling is in frame and the face is smaller. Moisture and wrinkle scores rose from the light and framing alone. The desk-lamp photos were actually taken a few minutes first (IMG_1431 to 1434, then IMG_1436 to 1439); the case orders them ceiling to lamp, the direction that would show a gain. These photos were taken after the capture limits were set and played no part in choosing them."
+ }
 }

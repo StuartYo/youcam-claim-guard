@@ -51,8 +51,9 @@ export interface DemoData {
   /** Held-out photos (session4). Kept apart from `photos` so they never enter the noise model or the in-sample calibration. */
   heldOut?: DemoPhoto[];
   /**
-   * Hook for the headline case: two held-out photos taken at the same spot where only the lamp changed.
+   * Hook for the headline case: two held-out photos where the lamp changed. Title and summary come with the data so the
+   * label says exactly what changed (in session4 the phone was also re-positioned, so it is not a lamp-only pair).
    * When present, lib/demo.ts puts this case first and the hero shows it.
    */
-  lampOnly?: { beforeId: string; afterId: string; beforeNote: string; afterNote: string };
+  lampOnly?: { beforeId: string; afterId: string; beforeNote: string; afterNote: string; title: string; summary: string };
 }

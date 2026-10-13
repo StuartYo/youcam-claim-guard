@@ -14,11 +14,16 @@ If any answer is no, the badge is blocked and the reason is returned.
 
 We took 15 selfies of the same face on the same day with no skincare in between, under three setups, and ran each through YouCam SD skin analysis (`docs/noise-floor-2026-10-13.md`).
 
-- Same light, nothing changed: `ui_score` moves about ±1, `raw_score` SD is 1 to 2.
+- Same light, nothing changed: `ui_score` moves about ±1, `raw_score` SD is 1 to 2 in that session. Retakes on a later evening spread more (moisture SD up to 3.75), so the noise floor now pools both; see Noise floor.
 - Moving to a different room and light (ceiling light in one room, a bright window in another) moved average moisture from ui 73.3 to 80.0 (+9.1%), raw 58.2 to 77.0.
 - The same file sent twice returns identical scores. The jitter comes from the photo, not the API.
 
-A "+9% moisture" claim can be produced by moving to a different room.
+On a different evening we took 12 more (`docs/held-out-2026-10-13.md`), in one room: four under the ceiling light, four under a desk lamp with the phone re-positioned (lower and tilted up, so the ceiling is in frame), and four under the same lamp about 20 minutes after washing the face and applying a moisturizer.
+
+- Ceiling light to desk lamp in the same room, with the phone re-positioned, moved average moisture from ui 70.8 to 75.3 (+6.4%) and wrinkle from ui 86.5 to 96.3. No skincare in between.
+- The real moisturizer moved average moisture from ui 75.3 to 75.0.
+
+A "+9% moisture" claim can be produced by moving to a different room, and "+6%" by switching on a desk lamp.
 
 Numbers in this README, the docs and the page come from `data/scores.json` with one rounding rule (half up, `fix()` in `lib/summary.ts`). `tests/docs-consistency.test.ts` fails if a quoted number drifts from the data.
 
@@ -66,12 +71,14 @@ In local development on Windows, if the dev server process was started before `Y
 ## What's in the app
 
 - **Cases**: real results from the developer's own photos.
+  - Same room, ceiling light to desk lamp (the hero): held-out photos `IMG_1437` and `IMG_1432`. The phone was also re-positioned, so this is not a lamp-only pair. Moisture (raw +12.4, ui 70 to 75) and wrinkle (raw +5.2, ui 86 to 96) move past the noise floor, so a noise check alone would show both badges. The capture check blocks the pair (face 24% darker, face vs background, light colour). The lamp photos were taken a few minutes before the ceiling ones; the case orders them ceiling to lamp, the direction that shows a gain.
   - Same light, nothing changed: within noise.
   - Different room and light, ceiling light to window: blocked (backlight, brightness, colour).
   - Different room and light, ceiling light to desk spot: raw moisture moved past the noise floor, still blocked by the capture check.
   - Same file sent twice: identical scores, within noise.
+  - Real moisturizer, same lamp, 20 minutes: held-out `IMG_1432` (before) and `IMG_1442` (after), `product_category: "moisturizer"`. One person, one application, photos about 20 minutes later. No badge. Raw moisture moved +1.0 (ui 75 to 75), inside the floor, so there is no moisture result even before the capture check. Pore rose (raw +10.9) but this policy does not let a moisturizer claim pore; wrinkle is also blocked by claim type. Radiance fell (raw −4.9). The capture check blocked the pair because the face measured 10.1% brighter (limit 10%) under the same lamp, so moisture and radiance show `blocked-conditions`. It says nothing about what the product does over weeks.
   - Virtual foundation (positive control): the file sent to YouCam virtual foundation against the try-on output, with `product_category: "foundation"`. The capture check passes. Radiance is allowed as an appearance claim (with the product on). Moisture and wrinkle are blocked by claim type, because foundation is makeup. Pore stays inside the noise floor. This is a simulated product effect, not treated skin, and the after photo differs in more than the face: the try-on also brightened the background and went through PNG to JPEG. See `docs/positive-control-2026-10-13.md`.
-  - None of these cases changes only the lamp: the ceiling-light photos were taken in another room with different framing. When a same-spot pair where only the lamp changes is added (`photos/session4/`, see Data), it becomes the first case and the hero.
+  - Representative photos: each held-out case uses the shot closest to its group mean on the four raw scores (squared differences divided by the pooled SD), chosen on scores only (`representative()` in `lib/noise-groups.ts`). The headline pair is named in `photos/session4/lamp-only.json`, and a test checks it matches that rule. The in-sample cases keep their original pairs.
 - **How it decides**: the noise table and the capture calibration, computed from the shipped data.
 - **Try your own photos**: upload before and after. The capture check runs first and is free. Skin analysis runs only after the user agrees to the consent note (or confirms when conditions differ). "Try with sample photos" runs the free check on two demo photos and shows their real YouCam responses, cached from 2026-10-13 in `public/demo/youcam/` (signed mask URLs removed), so no credits are spent.
 - **For brands**: `POST /api/v1/claim-check` takes the YouCam scores a brand already has, both photos and an optional `product_category`, and returns per-metric verdicts. It makes no YouCam call.
@@ -87,7 +94,7 @@ Checks run in order; the first that applies sets the verdict for each metric.
 5. **Display change**: `no-visible-change` if |Δraw| > MDC95 but |Δui| < 1. The badge reports the ui change, so a badge reading 0% has nothing to claim.
 6. Otherwise `claimable`: |Δraw| > MDC95 and |Δui| ≥ 1. For a category whose claim on this metric is "appearance", the response adds `badge_label: "Appearance with product on"`.
 
-The noise test runs on `raw_score` because ui is a compressed display scale and raw is where movement shows. The badge reports the `ui_score` change, so the display score must move too. Example: a raw wrinkle change of +0.36 against a floor of 0.17 with ui staying at 97 is `no-visible-change` (`tests/noise.test.ts`).
+The noise test runs on `raw_score` because ui is a compressed display scale and raw is where movement shows. The badge reports the `ui_score` change, so the display score must move too. Example: a raw wrinkle change just past the floor with ui staying at 97 is `no-visible-change` (`tests/noise.test.ts`). With the pooled floor no demo case lands here; with the old session 1 floor the positive control's wrinkle (+0.36 against 0.17) did.
 
 ### Claim type policy
 
@@ -103,26 +110,44 @@ The noise test runs on `raw_score` because ui is a compressed display scale and 
 
 "Skin" is a claim about the skin after use. "Appearance" is a claim about how the skin looks while the product is on, and the badge must say so. Without `product_category` the check is skipped, which is how the lighting cases run.
 
-### Calibrated on these photos only
+### Calibrated on these photos only, then tested on new ones
 
-The noise floor and the four capture limits were set by looking at the same 15 photos they are tested on: one face, one phone, one day. So the pair counts below are an in-sample consistency check, not an accuracy figure. It shows the limits separate these photos, not that they generalize.
+The four capture limits were set by looking at the first 15 photos: one face, one phone, one day. The in-sample pair counts below are a consistency check, not an accuracy figure.
 
-Held-out check: pending (new photos). `npm run calibrate` looks for `photos/session4/<setup>/*.jpg`, one folder per lighting setup, and reports the same-setup pass rate and the different-setup block rate on those photos separately from the in-sample numbers. Folders whose name starts with `backlit` are expected to block within the folder too.
+### Held-out check
+
+Twelve photos of the same face from a different evening (2026-10-13), not used to set the limits. The limits were not changed after seeing them. `npm run calibrate` prints the full table.
+
+| Setup | What the photos show |
+|---|---|
+| A | Ceiling light only. Phone held closer: the face is larger in frame and no ceiling is visible. |
+| B | Same room, desk lamp instead of the ceiling light. Phone re-positioned lower and tilted up: the ceiling is in frame and the face is smaller. |
+| C | Same desk lamp as B, similar framing (a little less ceiling in frame), about 20 minutes after washing the face and applying a moisturizer. |
+
+On 12 held-out photos from a different evening, with the limits frozen: 32 of 36 same-setup pairs pass (88.9%); the 4 failures are all in setup B (desk lamp), on face brightness. 64 of 64 pairs with different light are blocked (100.0%). Between the desk-lamp photos before and after moisturizer (same lamp), only 10 of 32 pairs pass (31.3%); the others fail on light colour in 15, face brightness in 7.
+
+What this shows: the check blocked every pair where the light changed. It also blocked pairs it should have passed. In set B the face got brighter from shot to shot under the same lamp (luma 86 to 100). Between B and C the lamp was the same, but the face measured redder after washing and moisturizer, and the light colour check reads that as warmer light: from pixels alone it cannot tell skin colour from light colour. For a user that means more "retake in the same light" prompts than needed, not a wrong badge.
 
 ### Noise floor
 
-SD per metric comes from the six session1 photos (desk spot, same light). The duplicate submission of IMG_1406 is excluded because it is the same file.
+Until the held-out photos arrived, the SD came from the six session1 photos alone. The held-out retakes were noisier: under that floor, 6 of 18 same-setup held-out pairs moved moisture past it and 10 of 18 moved wrinkle past it, where about 1 in 20 is expected. The session1 floor was too tight.
+
+The SD is now pooled within five sets of retakes, each at one spot under one light with nothing changed in between: session1 (desk spot, 6), session3 (ceiling light, other room, 4), and held-out A, B and C (4 each). Pooled SD = √(Σ(nᵢ − 1)·SDᵢ² / Σ(nᵢ − 1)), so each set keeps its own mean and a light change between sets never counts as noise. The window session is left out because every photo in it is backlit and the capture check blocks those pairs anyway. The duplicate submission of IMG_1406 and the try-on photos are left out because they are not retakes.
 
 MDC95 = 1.96 × √2 × SD. Each photo carries its own retake error, so the difference of two photos has SD √2 × SD; a change beyond 1.96 of those happens by chance under 5% of the time.
 
-| Metric | SD (raw) | MDC95 (raw) |
-|---|---|---|
-| Moisture | 1.85 | 5.14 |
-| Pore | 1.03 | 2.87 |
-| Wrinkle | 0.06 | 0.17 |
-| Radiance | 1.22 | 3.38 |
+| Metric | SD s1 | SD s3 | SD s4A | SD s4B | SD s4C | Pooled SD | MDC95 pooled (used) | MDC95 session 1 only (before) |
+|---|---|---|---|---|---|---|---|---|
+| Moisture | 1.85 | 1.19 | 3.75 | 3.31 | 2.25 | 2.56 | 7.10 | 5.14 |
+| Pore | 1.03 | 4.37 | 6.02 | 1.04 | 0.71 | 3.22 | 8.93 | 2.87 |
+| Wrinkle | 0.06 | 0.34 | 1.23 | 0.18 | 0.08 | 0.55 | 1.51 | 0.17 |
+| Radiance | 1.22 | 0.55 | 1.41 | 1.62 | 1.85 | 1.38 | 3.83 | 3.38 |
 
-`data/noise-model.json` is generated by `npm run data:noise` from `data/scores.json`. A test checks that the shipped file matches a fresh computation.
+With the pooled floor, 3, 3, 3 and 0 of the 18 held-out pairs still move past it for moisture, pore, wrinkle and radiance. Those photos helped set the pooled floor, so that count is in-sample, and the floor may still be too tight. Pore is the widest because of one shot in set A (IMG_1436, raw 68.7 against about 57 for the other three) and the ceiling-light session.
+
+What changed in the cases: the positive control's wrinkle (+0.36 raw) moved from `no-visible-change` to `within-noise`; every other verdict stayed the same, though a few blocked metrics no longer cross the floor. Radiance in the positive control (+11.45 raw against 3.83) is still claimable.
+
+`data/noise-model.json` is generated by `npm run data:noise` from `data/scores.json` (groups in `lib/noise-groups.ts`) and keeps the session1-only model next to the pooled one. A test checks that the shipped file matches a fresh computation.
 
 ### Capture conditions
 
@@ -165,9 +190,9 @@ The limits are in server memory per instance, like the credit caps below. The IP
 
 ## Data
 
-- `data/scores.json`: compact scores and capture stats for the 15 photos plus the duplicate submission.
+- `data/scores.json`: compact scores and capture stats for the 15 photos, the duplicate submission and the 12 held-out photos.
 - `public/demo/youcam/*.json`: the raw YouCam responses for the demo photos (`scripts/export-cached.ts`), with the expired signed mask URLs removed.
-- New photos go in `photos/session4/<setup>/*.jpg`. `npm run calibrate` uses them as the held-out check. With their YouCam results in `results/s4/<setup>/*.json`, `npm run data:import` stores them under `heldOut` (never in `photos`), and a `photos/session4/lamp-only.json` file (`{ "beforeId", "afterId", "beforeNote", "afterNote" }`) names the same-spot pair where only the lamp changed. That pair becomes the headline case.
+- Held-out photos are in `photos/session4/{A,B,C}/*.jpg` with YouCam results in `results/s4A/`, `results/s4B/`, `results/s4C/` (or `results/s4/<setup>/`). `npm run calibrate` uses them as the held-out check. `npm run data:import` stores them under `heldOut` (never in `photos`, so they stay out of the in-sample calibration; they do join the pooled noise floor). Setup descriptions and which setups share a light are in `lib/heldout.ts`. `photos/session4/lamp-only.json` (`{ "beforeId", "afterId", "beforeNote", "afterNote", "title", "summary" }`) names the headline pair and carries its label, so the label says exactly what changed.
 - `public/demo/*.jpg`: the photos downscaled to 720 px on the long side, plus the virtual try-on output used by the positive control.
 - `data/scores.json` keeps the try-on result under `simulated` and its matched baseline (IMG_1407 resized to 1440 x 1920, the exact try-on input) under `baselines`, separate from `photos`, so neither enters the noise model or the capture calibration.
 - These are the developer's own photos, published with his consent. Raw API output (`results/`) and full-size photos (`photos/`) stay local and are gitignored. `npm run data:import` rebuilds the committed data from them.

@@ -8,7 +8,9 @@ import { CALIBRATION_COLUMNS, calibrationTable } from "@/lib/calibration";
 import { APPEARANCE_LABEL, CLAIM_POLICY, policyRows } from "@/lib/claim-policy";
 import { demoCases, demoData, getCase, HEADLINE_SLUG, noiseModel, type DemoCase } from "@/lib/demo";
 import { badgeText, METRIC_LABEL, METRICS, type Scores } from "@/lib/noise";
-import { headline, pairSentence } from "@/lib/summary";
+import { failingText, heldOutSentence, heldOutTally, HELD_OUT_SETUPS, pctOf } from "@/lib/heldout";
+import { noiseGroups, noiseModelFile, pairsPastFloor } from "@/lib/noise-groups";
+import { headline, pairSentence, sameRoomHeadline } from "@/lib/summary";
 
 const RULES = [
   {
@@ -76,7 +78,10 @@ function HeroCard({ c }: { c: DemoCase }) {
         <NoiseRuler deltaRaw={moisture.deltaRaw} mdc={moisture.mdc95} width={300} />
       </div>
       <p className="hero-card__legend">
-        The shaded band is what retaking the same photo produces. This change lands outside it, so a noise check alone would show the badge.
+        The shaded band is what retaking the same photo produces.{" "}
+        {moisture.aboveNoise
+          ? "This change lands outside it, so a noise check alone would show the badge."
+          : "This change lands inside it, so it can be retake noise."}
       </p>
       <div className="hero-card__foot">
         <div className="hero-card__photos">
@@ -89,7 +94,7 @@ function HeroCard({ c }: { c: DemoCase }) {
           <p className="duo__label">The app would show</p>
           <span className="badge badge--sm">{badgeText("moisture", moisture.deltaUiPct)}</span>
           <p className="duo__label">Claim Guard</p>
-          <p className="duo__verdict">{blocked ? "Blocked: the light differs" : "Allowed"}</p>
+          <p className="duo__verdict">{blocked ? "Blocked: photos not comparable" : "Allowed"}</p>
         </div>
       </div>
     </article>
@@ -106,7 +111,13 @@ export default function Home() {
   const hero = getCase(HEADLINE_SLUG);
   const roomDesk = getCase("room-desk");
   const real = getCase("real-change");
-  const s1 = demoData.photos.filter((p) => p.session === "s1");
+  const room = sameRoomHeadline(demoData);
+  const noiseFile = noiseModelFile(demoData);
+  const heldOutGroups = noiseGroups(demoData).filter((g) => g.heldOut);
+  const floorOf = (k: "metrics" | "session1Only") => Object.fromEntries(METRICS.map((m) => [m, noiseFile[k][m].mdc95])) as Record<(typeof METRICS)[number], number>;
+  const pastS1 = pairsPastFloor(heldOutGroups, floorOf("session1Only"));
+  const pastPooled = pairsPastFloor(heldOutGroups, floorOf("metrics"));
+  const held = demoData.heldOut?.length ? heldOutTally(demoData.heldOut.map((p) => ({ id: p.id, setup: p.setup!, capture: p.capture }))) : null;
   const calib = calibrationTable(demoData.photos);
   const policy = policyRows();
 
@@ -180,10 +191,18 @@ export default function Home() {
               larger than retake noise, both photos were taken in comparable light, and the product can cause that kind of change. Otherwise the
               badge is blocked and the reason is logged.
             </p>
-            <p className="fact">
-              We took {h.photoCount} selfies of one face on one day, with no skincare in between. Moving from a ceiling light in another room to a
-              window raised the average moisture score from {h.ceilingMoistureUi} to {h.windowMoistureUi} (+{h.lampMoisturePct}%).
-            </p>
+            {room ? (
+              <p className="fact">
+                Same face, same room, same evening, no skincare in between. Switching from the ceiling light to a desk lamp, with the phone
+                re-positioned, raised the average moisture score from {room.moistureCeilingUi} to {room.moistureLampUi} (+{room.moisturePct}%) and
+                wrinkle from {room.wrinkleCeilingUi} to {room.wrinkleLampUi}.
+              </p>
+            ) : (
+              <p className="fact">
+                We took {h.photoCount} selfies of one face on one day, with no skincare in between. Moving from a ceiling light in another room to a
+                window raised the average moisture score from {h.ceilingMoistureUi} to {h.windowMoistureUi} (+{h.lampMoisturePct}%).
+              </p>
+            )}
             <div className="hero__links">
               <a className="btn btn--primary" href="#cases">
                 See the cases
@@ -253,29 +272,37 @@ export default function Home() {
           <div className="how-grid">
             <div className="how-card">
               <h3>Noise floor</h3>
-              <p>From {s1.length} selfies at the desk spot under the same light.</p>
+              <p>
+                SD of raw scores within {noiseFile.groups.length} sets of retakes, each at one spot under one light with nothing changed, pooled
+                across the sets ({noiseFile.metrics.moisture.n} photos). Each set keeps its own average, so a light change between sets never counts
+                as noise.
+              </p>
               <div className="table-scroll">
                 <table>
                   <thead>
                     <tr>
                       <th>Metric</th>
-                      <th>Shots</th>
-                      <th>SD (raw)</th>
-                      <th>MDC95 (raw)</th>
+                      <th>Pooled SD</th>
+                      <th>MDC95 (used)</th>
+                      <th>Session 1 only</th>
                     </tr>
                   </thead>
                   <tbody>
                     {METRICS.map((m) => (
                       <tr key={m}>
                         <td>{METRIC_LABEL[m]}</td>
-                        <td className="num">{noiseModel[m].n}</td>
                         <td className="num">{noiseModel[m].sd.toFixed(2)}</td>
-                        <td className="num">±{noiseModel[m].mdc95.toFixed(2)}</td>
+                        <td className="num">&plusmn;{noiseModel[m].mdc95.toFixed(2)}</td>
+                        <td className="num">&plusmn;{noiseFile.session1Only[m].mdc95.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              <p className="small">
+                Sets: {noiseFile.groups.map((g) => `${g.label} (${g.ids.length})`).join(", ")}. The window session is left out because every photo
+                in it is backlit and the capture check blocks those pairs anyway.
+              </p>
             </div>
 
             <div className="how-card">
@@ -355,13 +382,83 @@ export default function Home() {
           <div className="honesty">
             <h3>What these numbers do and don&apos;t show</h3>
             <p>
-              The noise floor and the four limits were calibrated on these {h.photoCount} photos: one face, one phone, one day. So the pass and block
-              counts above are in-sample. They show the limits separate these photos. They are not an accuracy figure.
+              The four capture limits were set on the first {h.photoCount} photos: one face, one phone, one day. The pass and block counts above
+              are in-sample. They show the limits separate those photos. They are not an accuracy figure.
             </p>
-            <p>
-              <strong>Held-out check: pending (new photos).</strong> <code>npm run calibrate</code> reads a second set from{" "}
-              <code>photos/session4/</code> and reports its pass and block rates separately.
-            </p>
+            {held ? (
+              <div className="heldout">
+                <h4>Held-out check</h4>
+                <p>
+                  Twelve more photos of the same face, taken on a different evening and not used to set the limits, which were not changed
+                  afterwards. Four shots each under three setups:
+                </p>
+                <ul className="heldout__setups">
+                  {Object.entries(HELD_OUT_SETUPS).map(([k, v]) => (
+                    <li key={k}>
+                      <strong>{k}.</strong> {v.note}
+                    </li>
+                  ))}
+                </ul>
+                <table className="stack-sm">
+                  <thead>
+                    <tr>
+                      <th>Pairs</th>
+                      <th>Expected</th>
+                      <th>Result</th>
+                      <th>Failed checks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td data-label="Pairs">Same setup (A-A, B-B, C-C)</td>
+                      <td data-label="Expected">Pass</td>
+                      <td className="num" data-label="Result">
+                        {held.sameSetup.passed}/{held.sameSetup.total} pass ({pctOf(held.sameSetup.passed, held.sameSetup.total)})
+                      </td>
+                      <td data-label="Failed checks">{failingText(held.sameSetup)}</td>
+                    </tr>
+                    <tr>
+                      <td data-label="Pairs">Different light (A-B, A-C)</td>
+                      <td data-label="Expected">Blocked</td>
+                      <td className="num" data-label="Result">
+                        {held.differentLight.total - held.differentLight.passed}/{held.differentLight.total} blocked (
+                        {pctOf(held.differentLight.total - held.differentLight.passed, held.differentLight.total)})
+                      </td>
+                      <td data-label="Failed checks">{failingText(held.differentLight)}</td>
+                    </tr>
+                    <tr>
+                      <td data-label="Pairs">Same lamp, before and after moisturizer (B-C)</td>
+                      <td data-label="Expected">Pass</td>
+                      <td className="num" data-label="Result">
+                        {held.sameLightSkinChange.passed}/{held.sameLightSkinChange.total} pass (
+                        {pctOf(held.sameLightSkinChange.passed, held.sameLightSkinChange.total)})
+                      </td>
+                      <td data-label="Failed checks">{failingText(held.sameLightSkinChange)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="small">Ordered pairs; the failed-checks column counts pairs per check. {heldOutSentence(held)}</p>
+                <p>
+                  What this shows: the check blocked every pair where the light changed. It also blocked pairs it should have passed. In set B the
+                  face got brighter from shot to shot under the same lamp. Between B and C the lamp was the same, but the face measured redder after
+                  washing and moisturizer, and the light colour check reads that as warmer light: from pixels alone it cannot tell skin colour from
+                  light colour. For a user this means more &ldquo;retake in the same light&rdquo; prompts than needed, not a wrong badge.
+                </p>
+                <p>
+                  The held-out retakes were also noisier than session 1. Under the old floor from session 1 alone, {pastS1.moisture.past} of{" "}
+                  {pastS1.moisture.pairs} same-setup held-out pairs moved moisture past it and {pastS1.wrinkle.past} of {pastS1.wrinkle.pairs} moved
+                  wrinkle past it, where about 1 in 20 is expected. So the floor is now pooled across all five sets of retakes (table above). With the
+                  pooled floor, {pastPooled.moisture.past}, {pastPooled.pore.past}, {pastPooled.wrinkle.past} and {pastPooled.radiance.past} of{" "}
+                  {pastPooled.moisture.pairs} pairs still move past it for moisture, pore, wrinkle and radiance. Those photos helped set the pooled
+                  floor, so that count is in-sample, and the floor may still be too tight.
+                </p>
+              </div>
+            ) : (
+              <p>
+                <strong>Held-out check: pending (new photos).</strong> <code>npm run calibrate</code> reads a second set from{" "}
+                <code>photos/session4/</code> and reports its pass and block rates separately.
+              </p>
+            )}
             <p>
               The face box is fixed. We ran an offline face detector over all 17 demo images: it found one face in each, and the box sat inside it
               left to right, but its top edge reaches the forehead and, in the window photos, the hairline. We kept the fixed box because the

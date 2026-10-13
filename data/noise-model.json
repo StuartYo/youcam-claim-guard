@@ -1,31 +1,146 @@
 {
  "generatedBy": "scripts/gen-noise-model.ts",
- "basis": "session1: 6 photos (IMG_1406, IMG_1407, IMG_1408, IMG_1409, IMG_1410, IMG_1411), same spot and light, raw_score",
- "formula": "MDC95 = 1.96 * sqrt(2) * SD",
- "metrics": {
+ "basis": "SD pooled within 5 same-setup groups (s1 n=6, s3 n=4, s4A n=4, s4B n=4, s4C n=4), raw_score",
+ "formula": "MDC95 = 1.96 * sqrt(2) * SD (= 2.7719 * SD)",
+ "groups": [
+  {
+   "key": "s1",
+   "label": "Session 1, desk spot",
+   "heldOut": false,
+   "ids": [
+    "IMG_1406",
+    "IMG_1407",
+    "IMG_1408",
+    "IMG_1409",
+    "IMG_1410",
+    "IMG_1411"
+   ],
+   "sd": {
+    "moisture": 1.853,
+    "pore": 1.034,
+    "wrinkle": 0.06,
+    "radiance": 1.219
+   }
+  },
+  {
+   "key": "s3",
+   "label": "Session 3, ceiling light (other room)",
+   "heldOut": false,
+   "ids": [
+    "IMG_1373",
+    "IMG_1374",
+    "IMG_1375",
+    "IMG_1376"
+   ],
+   "sd": {
+    "moisture": 1.189,
+    "pore": 4.372,
+    "wrinkle": 0.344,
+    "radiance": 0.547
+   }
+  },
+  {
+   "key": "s4A",
+   "label": "Session 4A, ceiling light",
+   "heldOut": true,
+   "ids": [
+    "IMG_1436",
+    "IMG_1437",
+    "IMG_1438",
+    "IMG_1439"
+   ],
+   "sd": {
+    "moisture": 3.748,
+    "pore": 6.023,
+    "wrinkle": 1.233,
+    "radiance": 1.408
+   }
+  },
+  {
+   "key": "s4B",
+   "label": "Session 4B, desk lamp",
+   "heldOut": true,
+   "ids": [
+    "IMG_1431",
+    "IMG_1432",
+    "IMG_1433",
+    "IMG_1434"
+   ],
+   "sd": {
+    "moisture": 3.31,
+    "pore": 1.038,
+    "wrinkle": 0.177,
+    "radiance": 1.618
+   }
+  },
+  {
+   "key": "s4C",
+   "label": "Session 4C, desk lamp, after moisturizer",
+   "heldOut": true,
+   "ids": [
+    "IMG_1441",
+    "IMG_1442",
+    "IMG_1443",
+    "IMG_1444"
+   ],
+   "sd": {
+    "moisture": 2.254,
+    "pore": 0.709,
+    "wrinkle": 0.084,
+    "radiance": 1.854
+   }
+  }
+ ],
+ "session1Only": {
   "moisture": {
    "n": 6,
-   "mean": 65.095,
+   "df": 5,
    "sd": 1.853,
    "mdc95": 5.136
   },
   "pore": {
    "n": 6,
-   "mean": 61.081,
+   "df": 5,
    "sd": 1.034,
    "mdc95": 2.867
   },
   "wrinkle": {
    "n": 6,
-   "mean": 98.777,
+   "df": 5,
    "sd": 0.06,
    "mdc95": 0.166
   },
   "radiance": {
    "n": 6,
-   "mean": 81.517,
+   "df": 5,
    "sd": 1.219,
    "mdc95": 3.38
+  }
+ },
+ "metrics": {
+  "moisture": {
+   "n": 22,
+   "df": 17,
+   "sd": 2.563,
+   "mdc95": 7.104
+  },
+  "pore": {
+   "n": 22,
+   "df": 17,
+   "sd": 3.22,
+   "mdc95": 8.925
+  },
+  "wrinkle": {
+   "n": 22,
+   "df": 17,
+   "sd": 0.545,
+   "mdc95": 1.511
+  },
+  "radiance": {
+   "n": 22,
+   "df": 17,
+   "sd": 1.381,
+   "mdc95": 3.829
   }
  }
 }

@@ -71,6 +71,19 @@ The table above is the verdict without a product category. Foundation is makeup,
 | Wrinkle | blocked-claim-type | Foundation is makeup. A wrinkle claim needs a product such as a serum. |
 | Radiance | claimable, appearance | Badge "Radiance +11%" with the label "Appearance with product on". |
 
+## Noise floor update (2026-10-13 evening)
+
+The tables above use the first noise floor, from session1 alone. Held-out retakes showed that floor was too tight, and the app now uses an SD pooled over five sets of retakes (`docs/held-out-2026-10-13.md`). With the pooled floor (moisture 7.10, pore 8.93, wrinkle 1.51, radiance 3.83):
+
+| Metric | Δraw | Pooled MDC95 | Verdict without category | Verdict as foundation |
+|---|---|---|---|---|
+| Moisture | +13.72 | 7.10 | claimable | blocked-claim-type |
+| Pore | −2.83 | 8.93 | within noise | within noise |
+| Wrinkle | +0.36 | 1.51 | within noise (was no visible change) | blocked-claim-type |
+| Radiance | +11.45 | 3.83 | claimable | claimable, appearance |
+
+Only the wrinkle verdict without a category changed. The badge the app would show is the same: "Radiance +11%" with the label "Appearance with product on".
+
 ## Caveats
 
 - This is a simulated product effect, not treated skin. The UI says so on the after photo.

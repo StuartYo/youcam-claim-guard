@@ -3,7 +3,9 @@ import noiseJson from "../data/noise-model.json";
 import { CLAIM_POLICY, type ProductCategory } from "./claim-policy";
 import { compareConditions, type ConditionsResult } from "./conditions";
 import type { DemoData, DemoPhoto } from "./demo-types";
-import { evaluate, type Evaluation, type NoiseModel } from "./noise";
+import { evaluate, fmtSigned, METRICS, type Evaluation, type Metric, type NoiseModel } from "./noise";
+import { representative } from "./noise-groups";
+import { fix } from "./summary";
 
 export const demoData = scoresJson as unknown as DemoData;
 export const noiseModel = noiseJson.metrics as NoiseModel;
@@ -99,22 +101,60 @@ function simulatedCase(): DemoCase {
   };
 }
 
-/** Hook: a held-out same-spot pair where only the lamp changed (photos/session4/). Absent until those photos are imported. */
+/** Representative shot of a held-out setup (lib/noise-groups.ts: closest to the group mean on raw scores). */
+export function heldOutRep(setup: string): DemoPhoto {
+  const photos = (demoData.heldOut ?? []).filter((p) => p.setup === setup);
+  if (photos.length < 2) throw new Error(`held-out setup ${setup} missing`);
+  const sd = Object.fromEntries(METRICS.map((m) => [m, noiseModel[m].sd])) as Record<Metric, number>;
+  return representative(photos, sd);
+}
+
+/** Headline hook: a held-out pair where the lamp changed (photos/session4/lamp-only.json). Title and summary come with the data. */
 function lampOnlyCase(): DemoCase | null {
   const l = demoData.lampOnly;
   if (!l) return null;
-  return makeCase(
-    "lamp-only",
-    "Same spot, only the lamp changed",
-    "Same face, same spot, same framing. Only the lamp was switched. These photos were taken after the limits were set, so they played no part in choosing them.",
-    l.beforeId,
-    l.afterId,
-    l.beforeNote,
-    l.afterNote,
-  );
+  return makeCase("same-room-lamp", l.title, l.summary, l.beforeId, l.afterId, l.beforeNote, l.afterNote);
+}
+
+/**
+ * A real moisturizer, same desk lamp: held-out setup B (before) against C (about 20 minutes after washing the face and
+ * applying a moisturizer). One application, one person. Runs with product_category "moisturizer".
+ */
+function moisturizerCase(): DemoCase | null {
+  const held = demoData.heldOut ?? [];
+  if (!held.some((p) => p.setup === "B") || !held.some((p) => p.setup === "C")) return null;
+  const b = heldOutRep("B");
+  const a = heldOutRep("C");
+  const product: ProductCategory = "moisturizer";
+  const conditions = compareConditions(b.capture, a.capture);
+  const evaluation = evaluate({ before: b.scores, after: a.scores, conditions, noise: noiseModel, product });
+  const mean = (setup: string, m: Metric, k: "ui" | "raw") => fix(held.filter((p) => p.setup === setup).reduce((x, p) => x + p.scores[m]![k], 0) / held.filter((p) => p.setup === setup).length);
+  const mo = evaluation.metrics.find((x) => x.metric === "moisture")!;
+  return {
+    slug: "moisturizer",
+    title: "Real moisturizer, same lamp, 20 minutes",
+    summary:
+      `One person, one application of a real moisturizer (the developer's own product), photos about 20 minutes later under the same desk lamp with similar framing. ` +
+      `Across the four shots on each side, average moisture went from ui ${mean("B", "moisture", "ui")} to ${mean("C", "moisture", "ui")} (raw ${mean("B", "moisture", "raw")} to ${mean("C", "moisture", "raw")}). ` +
+      `In this pair raw moisture moved ${fmtSigned(mo.deltaRaw)}, inside the ±${mo.mdc95.toFixed(1)} floor, so there is no moisture result to show even before the capture check. ` +
+      `Pore rose and radiance fell. This policy does not let a moisturizer claim pore. ` +
+      (conditions.match
+        ? ""
+        : `The capture check also blocked the pair although the lamp was the same: ${conditions.checks
+            .filter((c) => !c.pass)
+            .map((c) => `${c.label.toLowerCase()} changed by ${(Math.abs(c.delta) * 100).toFixed(1)}% (limit ${(c.threshold * 100).toFixed(0)}%)`)
+            .join(" and ")}. `) +
+      `This says nothing about what the product does over weeks.`,
+    before: side(b, "desk lamp, before washing and moisturizer"),
+    after: side(a, "same lamp, about 20 minutes after moisturizer"),
+    conditions,
+    evaluation,
+    product,
+  };
 }
 
 const lampOnly = lampOnlyCase();
+const moisturizer = moisturizerCase();
 
 export const demoCases: DemoCase[] = [
   ...(lampOnly ? [lampOnly] : []),
@@ -146,11 +186,12 @@ export const demoCases: DemoCase[] = [
     "desk spot, different light from the ceiling shot",
   ),
   identicalCase(),
+  ...(moisturizer ? [moisturizer] : []),
   simulatedCase(),
 ];
 
-/** The case the hero shows: the held-out lamp-only pair when it exists, otherwise the different-room desk-spot case. */
-export const HEADLINE_SLUG = lampOnly ? "lamp-only" : "room-desk";
+/** The case the hero shows: the held-out same-room lamp pair when it exists, otherwise the different-room desk-spot case. */
+export const HEADLINE_SLUG = lampOnly ? "same-room-lamp" : "room-desk";
 
 export function getCase(slug: string): DemoCase {
   const c = demoCases.find((x) => x.slug === slug);

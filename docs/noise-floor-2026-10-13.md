@@ -17,7 +17,20 @@ Means and SDs are rounded half up to one decimal (`fix()` in `lib/summary.ts`, t
 
 Findings
 1. Same file submitted twice returns identical scores (deterministic). Jitter comes from the photo, not the API.
-2. Same light, nothing changed: ui moves ±1, raw SD 1–2. Minimum detectable change (95%, 2.77 × SD) on raw: moisture ≈ 5.1, pore ≈ 2.9, radiance ≈ 3.4.
-3. A different room and light moves moisture from ui 73.3 (ceiling) to 80.0 (window): +9.1%. Raw: 58.2 → 77.0, +32%. A "moisture +9%" before/after claim can be produced by changing the room. This is not a lamp-only test: room, framing and light all changed. A same-spot lamp-only retake is planned (`photos/session4/`).
+2. Same light, nothing changed: ui moves ±1, raw SD 1–2. Minimum detectable change (95%, 2.77 × SD) on raw: moisture ≈ 5.1, pore ≈ 2.9, radiance ≈ 3.4. Superseded the same evening: held-out retakes were noisier, and the app now uses an SD pooled over five sets of retakes (moisture 7.1, pore 8.9, wrinkle 1.5, radiance 3.8). See "Update" below.
+3. A different room and light moves moisture from ui 73.3 (ceiling) to 80.0 (window): +9.1%. Raw: 58.2 → 77.0, +32%. A "moisture +9%" before/after claim can be produced by changing the room. This is not a lamp-only test: room, framing and light all changed. The later same-room test (`docs/held-out-2026-10-13.md`) also moved the phone, so it is not lamp-only either.
 4. Pore is unstable under backlight (raw SD 8.9). Gate backlit photos.
 5. ui_score is a compressed display scale; raw_score is where the movement shows. Claim Guard should test on raw and report in ui.
+
+## Update (2026-10-13 evening): held-out photos and the pooled noise floor
+
+Twelve more photos on a different evening, in one room: A ceiling light, B desk lamp with the phone re-positioned, C same lamp after a moisturizer. Details and the capture-check results are in `docs/held-out-2026-10-13.md`.
+
+The within-set spread was larger than in session1 (moisture raw SD 3.75 in A against 1.85 in session1). Under the session1 floor, 6 of 18 same-setup held-out pairs moved moisture past it and 10 of 18 moved wrinkle past it, where about 1 in 20 is expected. The app now pools the SD within five sets of retakes (session1, session3, A, B, C); each set keeps its own mean, so the light difference between sets is not counted as noise.
+
+| Metric | SD s1 | SD s3 | SD s4A | SD s4B | SD s4C | Pooled SD | MDC95 pooled (used) | MDC95 session 1 only (before) |
+|---|---|---|---|---|---|---|---|---|
+| Moisture | 1.85 | 1.19 | 3.75 | 3.31 | 2.25 | 2.56 | 7.10 | 5.14 |
+| Pore | 1.03 | 4.37 | 6.02 | 1.04 | 0.71 | 3.22 | 8.93 | 2.87 |
+| Wrinkle | 0.06 | 0.34 | 1.23 | 0.18 | 0.08 | 0.55 | 1.51 | 0.17 |
+| Radiance | 1.22 | 0.55 | 1.41 | 1.62 | 1.85 | 1.38 | 3.83 | 3.38 |

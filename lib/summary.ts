@@ -94,3 +94,34 @@ export function headline(data: DemoData): Headline {
     pairs: pairTally(P),
   };
 }
+
+/** Mean of a held-out setup (photos/session4/<setup>), one decimal, same rounding rule. */
+export function heldOutMean(data: DemoData, setup: string, metric: Metric, scale: "ui" | "raw"): string {
+  const xs = (data.heldOut ?? []).filter((p) => p.setup === setup).map((p) => p.scores[metric]![scale]);
+  if (!xs.length) throw new Error(`held-out setup ${setup} missing`);
+  return fix(mean(xs));
+}
+
+export interface SameRoomHeadline {
+  moistureCeilingUi: string;
+  moistureLampUi: string;
+  /** Relative change of the rounded mean moisture ui, ceiling to lamp, in percent. */
+  moisturePct: string;
+  wrinkleCeilingUi: string;
+  wrinkleLampUi: string;
+}
+
+/** Held-out setup A (ceiling light) against B (desk lamp, phone re-positioned), group means. Null until session4 is imported. */
+export function sameRoomHeadline(data: DemoData): SameRoomHeadline | null {
+  const has = (s: string) => (data.heldOut ?? []).some((p) => p.setup === s);
+  if (!has("A") || !has("B")) return null;
+  const a = heldOutMean(data, "A", "moisture", "ui");
+  const b = heldOutMean(data, "B", "moisture", "ui");
+  return {
+    moistureCeilingUi: a,
+    moistureLampUi: b,
+    moisturePct: fix(((Number(b) - Number(a)) / Number(a)) * 100),
+    wrinkleCeilingUi: heldOutMean(data, "A", "wrinkle", "ui"),
+    wrinkleLampUi: heldOutMean(data, "B", "wrinkle", "ui"),
+  };
+}

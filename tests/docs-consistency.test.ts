@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 import scores from "../data/scores.json";
 import type { DemoData } from "../lib/demo-types";
 import { calibrationMarkdown, calibrationTable } from "../lib/calibration";
-import { fix, headline, pairSentence } from "../lib/summary";
+import { heldOutSentence, heldOutTally } from "../lib/heldout";
+import { METRIC_LABEL } from "../lib/metrics";
+import { noiseMarkdown, noiseModelFile } from "../lib/noise-groups";
+import { fix, headline, pairSentence, sameRoomHeadline } from "../lib/summary";
 
 const data = scores as unknown as DemoData;
 const read = (f: string) => readFileSync(path.join(__dirname, "..", f), "utf-8");
@@ -53,6 +56,22 @@ describe("README and docs quote the numbers the page computes", () => {
   it("the page uses three demo-data labels, one per place", () => {
     const n = (f: string) => (read(f).match(/Demo data:/g) ?? []).length;
     expect(n("app/page.tsx") + n("components/CaseExplorer.tsx") + n("components/ResultPanel.tsx") + n("components/LiveMode.tsx")).toBe(3);
+  });
+
+  it("held-out sentence, noise table and same-room means match the data", () => {
+    const heldDoc = read("docs/held-out-2026-10-13.md");
+    const t = heldOutTally((data.heldOut ?? []).map((p) => ({ id: p.id, setup: p.setup!, capture: p.capture })));
+    for (const doc of [readme, heldDoc]) expect(doc).toContain(heldOutSentence(t));
+    const table = noiseMarkdown(noiseModelFile(data), METRIC_LABEL);
+    for (const doc of [readme, heldDoc, noiseDoc]) expect(doc).toContain(table);
+    const r = sameRoomHeadline(data)!;
+    expect(readme).toContain(`moved average moisture from ui ${r.moistureCeilingUi} to ${r.moistureLampUi} (+${r.moisturePct}%) and wrinkle from ui ${r.wrinkleCeilingUi} to ${r.wrinkleLampUi}`);
+  });
+
+  it("the held-out pairs are not described as lamp-only", () => {
+    for (const doc of [readme, read("docs/held-out-2026-10-13.md"), read("lib/demo.ts"), read("app/page.tsx")]) {
+      expect(doc).not.toMatch(/only the lamp (was )?(changed|switched)/i);
+    }
   });
 
   it("no stale numbers remain", () => {

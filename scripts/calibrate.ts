@@ -9,9 +9,11 @@
  *
  * Held-out check: photos that played no part in choosing the thresholds go in photos/session4/,
  * one subfolder per lighting setup, e.g.
- *   photos/session4/desk-a/*.jpg        same spot, same light  -> pairs inside the folder should pass
- *   photos/session4/window-b/*.jpg      another setup          -> pairs across folders should be blocked
- *   photos/session4/backlit-c/*.jpg     folder name starting with "backlit" -> pairs inside should be blocked too
+ *   photos/session4/A/*.jpg   ceiling light
+ *   photos/session4/B/*.jpg   desk lamp, phone re-positioned
+ *   photos/session4/C/*.jpg   desk lamp as B, after washing the face and applying a moisturizer
+ * lib/heldout.ts says which setups share the same light. Pairs inside a setup should pass, pairs across different light
+ * should be blocked, and pairs across setups with the same light (B-C) should pass because only the skin changed.
  * The held-out rates are reported separately and never mixed into the in-sample numbers.
  *
  * Usage: npm run calibrate [-- --heldout photos/session4]
@@ -22,6 +24,7 @@ import sharp from "sharp";
 import { compareConditions, THRESHOLDS, type CaptureStats } from "../lib/conditions";
 import type { DemoData, DemoPhoto } from "../lib/demo-types";
 import { measure } from "../lib/measure";
+import { failingText, HELD_OUT_SETUPS, heldOutTally, pctOf, type HeldOutShot, type PairCount } from "../lib/heldout";
 import { pairSentence, pairTally } from "../lib/summary";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -88,40 +91,34 @@ console.log("These are in-sample: the limits were set on these same photos. They
 async function heldOut(dir: string) {
   const abs = path.resolve(ROOT, dir);
   const groups = existsSync(abs) ? readdirSync(abs).filter((g) => statSync(path.join(abs, g)).isDirectory()) : [];
-  const shots: Array<{ group: string; file: string; capture: CaptureStats }> = [];
+  const shots: HeldOutShot[] = [];
   for (const g of groups.sort()) {
     for (const f of readdirSync(path.join(abs, g)).filter((x) => /\.(jpe?g|png)$/i.test(x)).sort()) {
       // Same pipeline as the demo photos: 720 px JPEG, then measure (which resizes to 360 px).
       const buf = await sharp(path.join(abs, g, f)).rotate().resize(720, 720, { fit: "inside" }).jpeg({ quality: 80, mozjpeg: true }).toBuffer();
-      shots.push({ group: g, file: f, capture: await measure(buf) });
+      shots.push({ id: f.replace(/\.\w+$/, ""), setup: g, capture: await measure(buf) });
     }
   }
   if (shots.length < 2) {
-    console.log(`\nHeld-out check: pending (no photos in ${dir}/<setup>/).`);
+    console.log(`
+Held-out check: pending (no photos in ${dir}/<setup>/).`);
     return;
   }
-  let sameTotal = 0, samePass = 0, crossTotal = 0, crossBlock = 0, backTotal = 0, backBlock = 0;
-  for (const a of shots)
-    for (const b of shots) {
-      if (a === b) continue;
-      const ok = compareConditions(a.capture, b.capture).match;
-      if (a.group !== b.group) {
-        crossTotal++;
-        if (!ok) crossBlock++;
-      } else if (a.group.toLowerCase().startsWith("backlit")) {
-        backTotal++;
-        if (!ok) backBlock++;
-      } else {
-        sameTotal++;
-        if (ok) samePass++;
-      }
-    }
-  const rate = (n: number, d: number) => (d ? `${n}/${d} (${((n / d) * 100).toFixed(1)}%)` : "no pairs");
-  console.log(`\nHeld-out check (${shots.length} photos in ${groups.length} setups from ${dir}, not used to set the limits)`);
-  for (const s of shots) console.log(`  ${s.group}/${s.file}  ${JSON.stringify(s.capture)}`);
-  console.log(`  same setup, pass rate:        ${rate(samePass, sameTotal)}`);
-  console.log(`  different setup, block rate:  ${rate(crossBlock, crossTotal)}`);
-  console.log(`  backlit setup, block rate:    ${rate(backBlock, backTotal)}`);
+  const t = heldOutTally(shots);
+  console.log(`
+Held-out check (${shots.length} photos in ${t.setups.length} setups from ${dir}). Limits frozen from sessions 1 to 3, not re-tuned.`);
+  for (const g of t.setups) console.log(`  ${g}: ${HELD_OUT_SETUPS[g]?.note ?? "(no description in lib/heldout.ts)"}`);
+  for (const s of shots) console.log(`  ${s.setup}/${s.id}  ${JSON.stringify(s.capture)}`);
+  console.log("  Per setup pair (ordered pairs):");
+  for (const [k, c] of Object.entries(t.byPair).sort()) console.log(`    ${k}: ${c.passed}/${c.total} pass  failing checks: ${failingText(c)}`);
+  const line = (name: string, c: PairCount, want: "pass" | "block") =>
+    console.log(`  ${name.padEnd(46)} ${want === "pass" ? `${c.passed}/${c.total} pass (${pctOf(c.passed, c.total)})` : `${c.total - c.passed}/${c.total} blocked (${pctOf(c.total - c.passed, c.total)})`}  failing: ${failingText(c)}`);
+  line("same setup (expect pass):", t.sameSetup, "pass");
+  line("different light (expect block):", t.differentLight, "block");
+  line("same light, before vs after skincare (expect pass):", t.sameLightSkinChange, "pass");
+  const stored = new Map((data.heldOut ?? []).map((p) => [p.id, p.capture]));
+  const drift = shots.filter((s) => stored.has(s.id) && JSON.stringify(stored.get(s.id)) !== JSON.stringify(s.capture));
+  if (stored.size) console.log(`  Stored held-out capture stats in data/scores.json ${drift.length ? `DIFFER for ${drift.map((d) => d.id).join(", ")}` : "match these measurements"}.`);
 }
 
 const argIdx = process.argv.indexOf("--heldout");
