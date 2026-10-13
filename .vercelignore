@@ -1,0 +1,6 @@
+photos/
+results/
+node_modules/
+.next/
+.next-prod/
+*.HEIC
