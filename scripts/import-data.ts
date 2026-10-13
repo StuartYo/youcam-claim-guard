@@ -2,6 +2,7 @@
  * One-off importer: raw API results + full-size photos (both gitignored) -> compact committed data.
  *   results/{test1,s1,s2,s3}/*.json  ->  data/scores.json
  *   photos/session{1,2,3}/*.jpg      ->  public/demo/*.jpg (720px long side) + capture stats
+ *   results/vto/*.json + photos/vto/*.jpg -> simulated photos (YouCam makeup VTO output, see docs/positive-control-2026-10-13.md)
  * Then regenerates data/noise-model.json.
  * Usage: npm run data:import
  */
@@ -10,7 +11,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { measure } from "../lib/measure";
 import { METRICS, type Scores } from "../lib/noise";
-import type { DemoData, DemoPhoto } from "../lib/demo-types";
+import type { DemoData, DemoPhoto, SimulatedPhoto } from "../lib/demo-types";
 import { writeNoiseModel } from "./gen-noise-model";
 
 const ROOT = path.resolve(__dirname, "..");
@@ -18,6 +19,15 @@ const SESSIONS = [
   { id: "s1", dir: "session1", label: "Same spot, same light", results: ["test1", "s1"] },
   { id: "s2", dir: "session2", label: "Window behind (backlit)", results: ["s2"] },
   { id: "s3", dir: "session3", label: "Ceiling light", results: ["s3"] },
+] as const;
+
+/** Photos edited with YouCam makeup virtual try-on. Not captures, so they stay out of the noise model. */
+const SIMULATED = [
+  {
+    id: "IMG_1407_foundation1",
+    sourceId: "IMG_1407",
+    effect: "YouCam makeup virtual try-on, foundation (color #A87C66, color 25, glow 60, coverage 80)",
+  },
 ] as const;
 
 function parseScores(file: string): { scores: Scores; overall?: number; skinAge?: number } {
@@ -65,10 +75,23 @@ async function main() {
     }
   }
 
+  const simulated: SimulatedPhoto[] = [];
+  for (const s of SIMULATED) {
+    const resultFile = readdirSync(path.join(ROOT, "results", "vto")).find((f) => f.replace(/^\d+_/, "") === `${s.id}.json`);
+    if (!resultFile) throw new Error(`missing results/vto/*_${s.id}.json`);
+    const parsed = parseScores(path.join(ROOT, "results", "vto", resultFile));
+    const dst = path.join(outImg, `${s.id}.jpg`);
+    await sharp(path.join(ROOT, "photos", "vto", `${s.id}.jpg`)).rotate().resize(720, 720, { fit: "inside" }).jpeg({ quality: 80, mozjpeg: true }).toFile(dst);
+    const capture = await measure(dst);
+    simulated.push({ ...s, image: `/demo/${s.id}.jpg`, capture, ...parsed });
+    console.log("vto", s.id, JSON.stringify(parsed.scores), JSON.stringify(capture));
+  }
+
   const data: DemoData = {
     source: "YouCam SD skin analysis, 2026-10-13, dst_actions moisture,pore,wrinkle,radiance. Developer's own photos, used with consent.",
     photos,
     duplicates,
+    simulated,
   };
   writeFileSync(path.join(ROOT, "data", "scores.json"), JSON.stringify(data, null, 1) + "\n");
   console.log(`wrote data/scores.json (${photos.length} photos, ${duplicates.length} duplicate)`);

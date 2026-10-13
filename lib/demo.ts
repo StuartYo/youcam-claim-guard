@@ -30,13 +30,6 @@ export interface DemoCase {
   evaluation: Evaluation;
 }
 
-export interface PlaceholderCase {
-  slug: string;
-  title: string;
-  summary: string;
-  placeholder: true;
-}
-
 function side(p: DemoPhoto, note?: string): CaseSide {
   return { id: p.id, image: p.image, caption: `${p.id} · ${note ?? p.sessionLabel}` };
 }
@@ -72,7 +65,25 @@ function identicalCase(): DemoCase {
   };
 }
 
-export const demoCases: Array<DemoCase | PlaceholderCase> = [
+/** Positive control: one session1 photo against the same photo with YouCam virtual foundation applied. */
+function simulatedCase(): DemoCase {
+  const sim = demoData.simulated?.find((x) => x.id === "IMG_1407_foundation1");
+  if (!sim) throw new Error("simulated photo IMG_1407_foundation1 missing");
+  const b = photo(sim.sourceId);
+  const conditions = compareConditions(b.capture, sim.capture);
+  return {
+    slug: "real-change",
+    title: "Real change (positive control)",
+    summary:
+      "The before photo is an untouched same-light selfie. The after photo is the same photo with YouCam virtual foundation applied, so the face changed and the light did not. The skin itself was not treated: this simulates a product effect. Moisture, radiance and pore move past the noise floor, so the badge goes through. The pore score went down, and Claim Guard reports that too.",
+    before: side(b, "untouched, same light"),
+    after: { id: sim.id, image: sim.image, caption: "same photo with YouCam virtual foundation applied (simulated product effect)" },
+    conditions,
+    evaluation: evaluate({ before: b.scores, after: sim.scores, conditions, noise: noiseModel }),
+  };
+}
+
+export const demoCases: DemoCase[] = [
   makeCase(
     "same-light",
     "Same light, nothing changed",
@@ -95,13 +106,5 @@ export const demoCases: Array<DemoCase | PlaceholderCase> = [
     "IMG_1406",
   ),
   identicalCase(),
-  {
-    slug: "real-change",
-    title: "Real change (positive control)",
-    summary:
-      "Reserved for a positive control: a visible change made with YouCam makeup virtual try-on under the same light. It has not been created yet, so there is no result to show.",
-    placeholder: true,
-  },
+  simulatedCase(),
 ];
-
-export const isPlaceholder = (c: DemoCase | PlaceholderCase): c is PlaceholderCase => "placeholder" in c;

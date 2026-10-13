@@ -43,7 +43,7 @@ In local development on Windows, if the dev server process was started before `Y
 
 ## What's in the app
 
-- **Cases**: real results from the developer's own photos. Same light with nothing changed (within noise), ceiling light to window (blocked: backlight, brightness, colour), ceiling light to desk spot (raw moisture moved past the noise floor, still blocked by the capture check), the same file twice (identical). A slot for a positive control made with YouCam makeup virtual try-on is reserved and not filled yet.
+- **Cases**: real results from the developer's own photos. Same light with nothing changed (within noise), ceiling light to window (blocked: backlight, brightness, colour), ceiling light to desk spot (raw moisture moved past the noise floor, still blocked by the capture check), the same file twice (identical), and a positive control: one same-light photo against the same photo with YouCam virtual foundation applied (capture check passes, moisture, radiance and pore move past the noise floor, badge allowed). The positive control is a simulated product effect, not treated skin; see `docs/positive-control-2026-10-13.md`.
 - **How it decides**: the noise table and the capture calibration, computed from the shipped data.
 - **Try your own photos**: upload before and after. The capture check runs first and is free. Skin analysis runs only after the user agrees to the consent note (or confirms when conditions differ).
 - **For brands**: `POST /api/v1/claim-check` takes the YouCam scores a brand already has plus both photos and returns per-metric verdicts. It makes no YouCam call.
@@ -99,7 +99,8 @@ These limits come from one face, one phone and three lighting setups. A brand wo
 ## Data
 
 - `data/scores.json`: compact scores and capture stats for the 15 photos plus the duplicate submission.
-- `public/demo/*.jpg`: the photos downscaled to 720 px on the long side.
+- `public/demo/*.jpg`: the photos downscaled to 720 px on the long side, plus the virtual try-on output used by the positive control.
+- `data/scores.json` keeps the try-on result under `simulated`, separate from `photos`, so it never enters the noise model or the capture calibration.
 - These are the developer's own photos, published with his consent. Raw API output (`results/`) and full-size photos (`photos/`) stay local and are gitignored. `npm run data:import` rebuilds the committed data from them.
 
 ## Layout

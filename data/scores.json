@@ -522,5 +522,40 @@
    "overall": 81.75,
    "skinAge": 25
   }
+ ],
+ "simulated": [
+  {
+   "id": "IMG_1407_foundation1",
+   "sourceId": "IMG_1407",
+   "effect": "YouCam makeup virtual try-on, foundation (color #A87C66, color 25, glow 60, coverage 80)",
+   "image": "/demo/IMG_1407_foundation1.jpg",
+   "capture": {
+    "centerLum": 118.9,
+    "borderLum": 224.2,
+    "backlightRatio": 0.53,
+    "clippedBorder": 0.059,
+    "redBlue": 1.619
+   },
+   "scores": {
+    "radiance": {
+     "ui": 91,
+     "raw": 94.54
+    },
+    "pore": {
+     "ui": 71,
+     "raw": 58.801
+    },
+    "moisture": {
+     "ui": 81,
+     "raw": 80.561
+    },
+    "wrinkle": {
+     "ui": 97,
+     "raw": 99.092
+    }
+   },
+   "overall": 85,
+   "skinAge": 23
+  }
  ]
 }

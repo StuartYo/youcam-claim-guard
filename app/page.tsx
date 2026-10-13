@@ -4,12 +4,12 @@ import { NoiseRuler } from "@/components/NoiseRuler";
 import { toClaimCheckResponse } from "@/lib/brand-api";
 import { calibrationTable } from "@/lib/calibration";
 import { compareConditions } from "@/lib/conditions";
-import { demoCases, demoData, isPlaceholder, noiseModel, photo } from "@/lib/demo";
+import { demoCases, demoData, noiseModel, photo } from "@/lib/demo";
 import { badgeText, METRIC_LABEL, METRICS } from "@/lib/noise";
 
 export default function Home() {
   const lamp = demoCases.find((c) => c.slug === "lamp-window");
-  if (!lamp || isPlaceholder(lamp)) throw new Error("lamp-window case missing");
+  if (!lamp) throw new Error("lamp-window case missing");
   const lampMoisture = lamp.evaluation.metrics.find((m) => m.metric === "moisture")!;
   const s1 = demoData.photos.filter((p) => p.session === "s1");
   const avg = (s: string) => {

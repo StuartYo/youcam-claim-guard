@@ -85,4 +85,23 @@ describe("evaluate", () => {
     const ev = evaluate({ before: { moisture: { ui: 70, raw: 50 } }, after: { moisture: { ui: 80, raw: 70 } }, conditions: match, noise, identical: true });
     expect(ev.metrics[0].verdict).toBe("within-noise");
   });
+
+  it("positive control: same photo with virtual foundation passes the capture check and is claimable", () => {
+    const sim = data.simulated!.find((x) => x.id === "IMG_1407_foundation1")!;
+    const b = p(sim.sourceId);
+    const conditions = compareConditions(b.capture, sim.capture);
+    expect(conditions.match).toBe(true);
+    const ev = evaluate({ before: b.scores, after: sim.scores, conditions, noise });
+    expect(ev.badgeAllowed).toBe(true);
+    const v = (m: Metric) => ev.metrics.find((x) => x.metric === m)!;
+    expect(v("moisture").verdict).toBe("claimable");
+    expect(v("radiance").verdict).toBe("claimable");
+    expect(v("pore").verdict).toBe("claimable");
+    expect(v("pore").deltaRaw).toBeLessThan(0);
+  });
+
+  it("simulated photos stay out of the session data", () => {
+    const ids = new Set(data.photos.map((x) => x.id));
+    for (const s of data.simulated ?? []) expect(ids.has(s.id)).toBe(false);
+  });
 });
